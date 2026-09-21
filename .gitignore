@@ -1,0 +1,25 @@
+# --- Instance data: yours, never part of the framework ---------------------------------------
+# Everything /start writes and everything the flow produces lives here and is ignored by default, so
+# /upgrade can never collide with it. Want your registry and metrics versioned? Delete the lines you
+# want tracked; the framework never adds files with these names.
+/REPOS.md
+/ROUTING.md
+/workflow.conf
+/METRICS.md
+/plans/
+/learnings/
+/.worktrees/
+/.claude/registry-checked
+/.claude/settings.local.json
+
+# Every top-level folder is one of your repositories, each its own git repository. The framework's
+# own folders are listed back in below.
+/*/
+!/.claude/
+!/docs/
+!/templates/
+!/tests/
+
+# --- Local noise ------------------------------------------------------------------------------
+.DS_Store
+CLAUDE.local.md
