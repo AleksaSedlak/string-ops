@@ -26,7 +26,7 @@ fi
 if printf '%s' "$cmd" | grep -Eq '(^|[;&|]|\s)git(\s+(-C\s+\S+|--no-pager|-c\s+\S+))*\s+(checkout|switch)\s+(\S+\s+)*('"$(protected_alt)"')(\s|$)'; then block "checking out a protected branch"; fi
 if printf '%s' "$cmd" | grep -Eq '(^|[;&|]|\s)git(\s+(-C\s+\S+|--no-pager|-c\s+\S+))*\s+(branch\s+(-D|-d|--delete)|reset\s+--hard|worktree\s+(add|remove|prune)|remote\s+(add|set-url|remove))\b'; then block "branch deletion, hard reset, worktree or remote changes"; fi
 if printf '%s' "$cmd" | grep -Eq '(^|[;&|]|\s)gh\s+(pr\s+(create|merge|close|edit)|release|repo\s+(delete|edit))\b'; then block "gh pr/release/repo mutation"; fi
-if printf '%s' "$cmd" | grep -Eq '(^|[;&|]|\s)(npm|pnpm|yarn)\s+(publish|version)\b'; then block "package publish or version bump"; fi
+if printf '%s' "$cmd" | grep -Eq '(^|[;&|]|\s)((npm|pnpm|yarn|bun)\s+(publish|version)|cargo\s+publish|gem\s+push|twine\s+upload|(poetry|uv|flit|hatch)\s+publish|mvn\s+deploy|gradle\s+publish|dotnet\s+nuget\s+push|mix\s+hex\.publish)\b'; then block "package publish or version bump"; fi
 if printf '%s' "$cmd" | grep -Eq '(^|[;&|]|\s)(gcloud|kubectl|helm|terraform|vercel|firebase|eas)\b'; then block "cloud or deploy tooling"; fi
 # Read-only commands are allowed outright, so a user-level ask rule (for example on cat) cannot stall
 # the worker. Every segment must start with a read-only utility, there must be no redirection, and no
@@ -37,7 +37,7 @@ if ! printf '%s' "$cmd" | grep -Eq '[<>]|\$\(|`' \
   while IFS= read -r seg; do
     seg="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/^([A-Za-z_][A-Za-z0-9_]*=[^ ]*( +|$))*//')"
     [ -z "$seg" ] && continue
-    if ! printf '%s' "$seg" | grep -Eq '^(cat|head|tail|less|grep|rg|ls|find|wc|echo|printf|sort|uniq|tr|cut|jq|diff|stat|file|basename|dirname|pwd|which|sed -n|git (show|log|diff|status|branch|ls-files|ls-tree|rev-parse|cat-file|rev-list|describe|remote -v|blame|shortlog)|node --version|npm (ls|list|view|--version))( |$)'; then ok=0; break; fi
+    if ! printf '%s' "$seg" | grep -Eq '^(cat|head|tail|less|grep|rg|ls|find|wc|echo|printf|sort|uniq|tr|cut|jq|diff|stat|file|basename|dirname|pwd|which|sed -n|git (show|log|diff|status|branch|ls-files|ls-tree|rev-parse|cat-file|rev-list|describe|remote -v|blame|shortlog)|(node|python3?|go|cargo|rustc|ruby|java|dotnet|php|mvn|gradle) (--version|version|-v|-V)|(npm|pnpm|yarn|pip3?|cargo|go|bundle|composer) (ls|list|view|tree|show|info|--version))( |$)'; then ok=0; break; fi
   done < <(printf '%s\n' "$cmd" | tr '\n' ';' | sed -E 's/&&|\|\||\|/;/g' | tr ';' '\n'; echo)
   if [ "$ok" = 1 ]; then
     printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":"read-only command allowed by the workstream guard"}}'

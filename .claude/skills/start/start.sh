@@ -62,7 +62,7 @@ scaffold)
   mkdir -p "$d" && git init -q -b main "$d"
   printf '# %s\n\n%s\n' "$NAME" "${DESC:-Describe this project in one paragraph.}" > "$d/README.md"
   sed -e "s/<name>/$NAME/" -e "s/<one sentence: what this repository is for>/${DESC:-What this repository is for, in one sentence.}/" "$T/child-CLAUDE.md" > "$d/CLAUDE.md"
-  printf 'node_modules/\n.env\n.env.*\n!.env.example\n' > "$d/.gitignore"
+  printf '# dependencies and build output, any stack\nnode_modules/\n.venv/\nvenv/\n__pycache__/\nvendor/\ntarget/\nbuild/\ndist/\n.gradle/\nbin/\nobj/\n# secrets\n.env\n.env.*\n!.env.example\n# editors and OS\n.DS_Store\n.idea/\n.vscode/\n' > "$d/.gitignore"
   git -C "$d" add -A && git -C "$d" commit -q -m "Initial project skeleton" && echo "created  $NAME on main ($(git -C "$d" rev-parse --short HEAD))"
   echo "next     fill the commands in $NAME/CLAUDE.md once the stack exists; /add-repo registers it"
   exit 0;;

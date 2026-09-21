@@ -113,12 +113,16 @@ if [ "$WORKTREE" = 1 ]; then
   if [ -d "$REPO_DIR/.claude" ]; then
     rsync -a --exclude worktrees "$REPO_DIR/.claude/" "$WT/.claude/"
   fi
-  # reuse the main checkout's installed dependencies: a copy-on-write clone where the filesystem has
-  # one, a plain copy otherwise; no shared inodes, so the worker can still run install when the lockfile differs
-  if [ -d "$REPO_DIR/node_modules" ] && [ ! -e "$WT/node_modules" ]; then
-    if clone_dir "$REPO_DIR/node_modules" "$WT/node_modules"; then echo "cloned node_modules into the worktree" >&2
-    else rm -rf "$WT/node_modules"; echo "note: node_modules clone failed; the worker installs from scratch" >&2; fi
-  fi
+  # reuse the main checkout's installed dependencies, whatever the stack keeps them in: a copy-on-write
+  # clone where the filesystem has one, a plain copy otherwise; no shared inodes, so the worker can still
+  # run install when the lockfile differs
+  for dep in node_modules .venv venv vendor target/debug .gradle build/libs; do
+    if [ -d "$REPO_DIR/$dep" ] && [ ! -e "$WT/$dep" ]; then
+      mkdir -p "$(dirname "$WT/$dep")"
+      if clone_dir "$REPO_DIR/$dep" "$WT/$dep"; then echo "cloned $dep into the worktree" >&2
+      else rm -rf "$WT/$dep"; echo "note: $dep clone failed; the worker installs from scratch" >&2; fi
+    fi
+  done
 else
   WT="$REPO_DIR"
   [ -z "$(git -C "$WT" status --porcelain)" ] || fail "$REPO working tree is not clean; no-worktree mode needs a clean checkout"
@@ -153,7 +157,7 @@ sed "s#__SKILL_DIR__#$SKILL_DIR#g" "$SETTINGS_TEMPLATE" > "$SETTINGS"
 # read-only profile: the shared profile plus denies on editing or committing inside this repo
 if [ "$READONLY" = 1 ]; then
   RO="$PLAN/.dispatch/$REPO.readonly-settings.json"
-  jq --arg r "$REPO_DIR" '.permissions.deny += ["Edit(" + $r + "/**)", "Bash(git add:*)", "Bash(git commit:*)", "Bash(git stash:*)", "Bash(git checkout:*)", "Bash(git switch:*)", "Bash(git restore:*)", "Bash(npm install:*)", "Bash(npm ci:*)"]' "$SETTINGS" > "$RO"
+  jq --arg r "$REPO_DIR" '.permissions.deny += ["Edit(" + $r + "/**)", "Bash(git add:*)", "Bash(git commit:*)", "Bash(git stash:*)", "Bash(git checkout:*)", "Bash(git switch:*)", "Bash(git restore:*)", "Bash(npm install:*)", "Bash(npm ci:*)", "Bash(pnpm install:*)", "Bash(yarn install:*)", "Bash(pip install:*)", "Bash(pip3 install:*)", "Bash(uv sync:*)", "Bash(uv pip:*)", "Bash(poetry install:*)", "Bash(go get:*)", "Bash(go mod download:*)", "Bash(cargo build:*)", "Bash(cargo add:*)", "Bash(bundle install:*)", "Bash(composer install:*)", "Bash(mvn install:*)", "Bash(gradle build:*)", "Bash(dotnet restore:*)", "Bash(mix deps.get:*)"]' "$SETTINGS" > "$RO"
   SETTINGS="$RO"
 fi
 if [ -z "$EFFORT" ]; then if [ "$READONLY" = 1 ]; then EFFORT="$EFFORT_LOOKUP"; else EFFORT="$EFFORT_CODE"; fi; fi

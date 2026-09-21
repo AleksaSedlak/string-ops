@@ -68,7 +68,7 @@ This is a first version and it says so. It grew inside one company's workspace o
 
 - **Expect rough edges on your first change workstream.** Plan, dispatch, review and ship have been exercised on fixtures, not yet on a stranger's repositories. When something refuses to run, the coordinator is told to stop and say what was refused rather than work around it, so you will see it.
 - **herdr is the only backend for now.** Workers need a terminal multiplexer the coordinator can start, prompt, watch and read. herdr does exactly that. A tmux backend is next; it touches four scripts and nothing else.
-- **Repositories were all Node.** Nothing is Node-specific, but the paths that copy installed dependencies into a worktree and re-run a test command have only been proven there.
+- **Proven on Node, configured for the rest.** Workers are pre-approved for the build, test and dependency commands of Node, Python, Go, Rust, Ruby, Java, .NET, PHP, Elixir and Swift, and installed dependencies are copied into worktrees whichever folder the stack keeps them in. Only Node repositories have run through the flow so far.
 - **Starting from nothing is new.** `/start` can create a first repository and hand it to the flow, and that path has had less use than the drop-your-repos-in path.
 
 `tests/check.sh` proves the mechanics on throwaway repositories in a few seconds without herdr. `tests/live.sh` runs one real worker.
