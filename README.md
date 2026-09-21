@@ -1,4 +1,6 @@
-# Agent Workflow
+# Sergeant Scope
+
+Keeps the scope. Never touches the code.
 
 A folder that turns Claude Code into a coordinator for your repositories. You talk to one session. It works out which repos a request touches, plans with you, sends one worker per repo to do the work in its own checkout, has a second worker review the result, and opens pull requests only when you say so. Questions get answered the same way: a read-only worker per repo, an answer with file and line references.
 
@@ -7,7 +9,7 @@ It is plain markdown, shell and git. Nothing runs anywhere but your machine.
 ## Quick start
 
 ```
-git clone https://github.com/<you>/agent-workflow my-workspace
+git clone https://github.com/aleksasedlak/srgnt-scp my-workspace
 cd my-workspace
 claude
 ```
