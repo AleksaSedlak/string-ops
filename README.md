@@ -45,7 +45,7 @@ One worker, one repo, one report, done.
 ## How it works
 
 - **The coordinator never touches code.** It routes from a registry (`REPOS.md`, one entry per repo: what it owns, exposes, consumes, and when to touch it) and a vocabulary (`ROUTING.md`). Everything inside a repo is read by a worker.
-- **Workers are ordinary Claude Code sessions** started in a terminal window you can watch, one per repo, in a git worktree so they never collide. A permission profile and a guard hook stop them from pushing, merging, tagging, opening pull requests, touching protected branches or running deploy tooling, however the command is spelled.
+- **Workers are ordinary Claude Code sessions** started in a terminal window you can watch, one per repo, in a git worktree so they never collide. A permission profile and a guard hook stop them from pushing, merging, tagging, opening pull requests, touching protected branches, running deploy tooling or reading credential files, however the command is spelled.
 - **Files are the only channel.** A plan folder holds the contract, the task files, and one report per worker. Steering a worker means dropping a note in its inbox. Nothing lives only in a chat window, so closing the coordinator loses nothing; a new session picks up from disk.
 - **Three gates.** Route, plan, integrate. Each ends with a summary and waits for you. Shipping needs a fourth yes.
 - **Waiting costs nothing.** The coordinator ends its turn while workers run and is woken by a hook when one finishes, gets stuck, or asks something.

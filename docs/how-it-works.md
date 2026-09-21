@@ -31,7 +31,7 @@ Agents talk through files only. A plan folder under `plans/` holds what a worker
 Two layers, both in `.claude/skills/dispatch/`:
 
 - `worker-settings.json` is the permission profile every worker starts with: a broad allow list for reading, building and testing; a deny list for pushing, publishing, deploying and reading credential files; automatic answers for routine prompts so a worker does not stall on a shell loop. Read-only workers get an extra deny on editing and committing.
-- `guard.sh` is a hook that sees every shell command before it runs and blocks `git push`, merge, rebase, tag, cherry-pick, checking out a protected branch, deleting branches, hard resets, worktree changes, remote changes, `gh pr` mutations, package publishing and cloud tooling, in any spelling. It also lets plainly read-only commands through without a prompt.
+- `guard.sh` is a hook that sees every shell command before it runs and blocks `git push`, merge, rebase, tag, cherry-pick, checking out a protected branch, deleting branches, hard resets, worktree changes, remote changes, `gh pr` mutations, package publishing and cloud tooling, in any spelling. It also blocks reading credential files through the shell (env files, `.npmrc`, `.secrets/`, key files; `.env.example` stays readable), since Claude Code's own deny rules cover the Read tool but not `cat`. Plainly read-only commands go through without a prompt.
 
 `WORKER-RULES.md` is the single owner of the worker protocol (scope, git, reading, inbox, report format). It is copied into every plan folder and the worker reads it first. Task files and handoffs point at it instead of restating it.
 

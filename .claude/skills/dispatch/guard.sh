@@ -15,6 +15,12 @@ if printf '%s' "$cmd" | grep -Eq '(^|[;&|]|\s)cat(\s[^;&|]*)?(>|<<)'; then
   echo "BLOCKED by the workstream guard: cat used to write a file. Use the Write or Edit tool for files; use the Read tool, head or sed -n to read." >&2; exit 2
 fi
 
+# credential files are never read through the shell either: Claude Code's deny rules stop the Read tool,
+# this stops cat, head, sed and friends. *.env.example stays readable; --env flags are not files.
+if printf '%s' "$cmd" | sed -E 's/\.env\.example//g' | grep -Eiq '(^|[/[:space:]"=])([a-z0-9_.-]*\.env(\.[a-z0-9_-]+)?|\.npmrc|\.netrc|\.pypirc|[a-z0-9_.-]*\.(pem|key|p12|pfx|jks))([[:space:]"]|$)|(^|[/[:space:]])\.secrets(/|[[:space:]]|$)'; then
+  block "reading a credential file; ask the user for the value instead"
+fi
+
 # git subcommands, tolerant of `git -C path`, `git --no-pager`, `command git`, chained commands
 if printf '%s' "$cmd" | grep -Eq '(^|[;&|]|\s)git(\s+(-C\s+\S+|--no-pager|-c\s+\S+))*\s+push\b'; then block "git push"; fi
 if printf '%s' "$cmd" | grep -Eq '(^|[;&|]|\s)git(\s+(-C\s+\S+|--no-pager|-c\s+\S+))*\s+(merge|rebase|tag|cherry-pick)(\s|$)'; then
