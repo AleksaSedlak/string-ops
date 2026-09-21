@@ -19,7 +19,7 @@ For every repo bucket in the plan README, read `reports/<repo>.md`. A missing re
 
 Run `.claude/skills/dispatch/learn.sh --plan <abs plan>` once all reports are present; it files each report's Learnings into `learnings/<repo>.md` and prints what was new. Then run `.claude/skills/dispatch/link-repos.sh --plan <abs plan>`; it records every other registry repo a report names, and the entry does not yet, as a `Linked:` line on both entries. Mention the new learnings and links in the summary.
 
-Read `plans/<workstream>/.dispatch/workers.tsv` for the checkout path of each worker. Columns, tab-separated: started-at, repo, agent name, runner (always `herdr`), herdr workspace id, pane id, checkout path, effort, harness, model, branch and commit the worker started on. A repo with a report but no row was started by hand; use `.worktrees/<workstream>/<repo>` if it exists, else the main checkout, and say so.
+Read `plans/<workstream>/.dispatch/workers.tsv` for the checkout path of each worker. Columns, tab-separated: started-at, repo, agent name, runner (`herdr` or `tmux`), window id, pane id, checkout path, effort, harness, model, branch and commit the worker started on. A repo with a report but no row was started by hand; use `.worktrees/<workstream>/<repo>` if it exists, else the main checkout, and say so.
 
 ## 3. Per repo checks
 

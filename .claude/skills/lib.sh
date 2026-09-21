@@ -9,19 +9,25 @@ ws_root() { printf '%s' "${WORKSPACE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/
 
 # workflow.conf: plain KEY=value lines written by /start. Every key has a default here so a missing
 # file is fine.
-PROTECTED_BRANCHES="main master staging develop"
-WORKER_CAP=10
-LEARNINGS_CAP=15
-EFFORT_PLAN=xhigh
-EFFORT_CODE=high
-EFFORT_LOOKUP=medium
+# Precedence: a value set in the environment (tests, one-off overrides) beats workflow.conf, which
+# beats these defaults.
+_CONF_KEYS="PROTECTED_BRANCHES WORKER_CAP LEARNINGS_CAP EFFORT_PLAN EFFORT_CODE EFFORT_LOOKUP WORKER_BACKEND TMUX_SESSION"
+_ENV_SET=""; for _k in $_CONF_KEYS; do eval "[ -n \"\${$_k+x}\" ]" && _ENV_SET="$_ENV_SET $_k"; done
+: "${PROTECTED_BRANCHES:=main master staging develop}"
+: "${WORKER_CAP:=10}"
+: "${LEARNINGS_CAP:=15}"
+: "${EFFORT_PLAN:=xhigh}"
+: "${EFFORT_CODE:=high}"
+: "${EFFORT_LOOKUP:=medium}"
+: "${WORKER_BACKEND:=auto}"
+: "${TMUX_SESSION:=workers}"
 load_conf() {
-  local f="$(ws_root)/workflow.conf"
+  local f="$(ws_root)/workflow.conf" k v
   [ -f "$f" ] || return 0
   while IFS='=' read -r k v; do
     case "$k" in ''|\#*) continue;; esac
     v="${v%\"}"; v="${v#\"}"
-    case "$k" in PROTECTED_BRANCHES|WORKER_CAP|LEARNINGS_CAP|EFFORT_PLAN|EFFORT_CODE|EFFORT_LOOKUP) eval "$k=\"\$v\"";; esac
+    case " $_CONF_KEYS " in *" $k "*) case " $_ENV_SET " in *" $k "*) ;; *) eval "$k=\"\$v\"";; esac;; esac
   done < "$f"
 }
 load_conf

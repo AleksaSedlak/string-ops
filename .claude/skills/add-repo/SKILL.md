@@ -12,7 +12,7 @@ Run from the workspace root. Input: a folder name. Output: one confirmed entry a
 - Confirm `<folder>/.git` exists. If not, stop: the workspace registers git repositories only.
 - Confirm `REPOS.md` has no `## <folder>` entry already. If it has, stop and point at `/refresh-repos`.
 - Read the remote (`git -C <folder> remote get-url origin`) and the default branch (`gh repo view --json defaultBranchRef -q .defaultBranchRef.name` when a remote exists, else the current branch). PR target defaults to `staging` when `origin/staging` exists, otherwise the default branch.
-- If the folder has no `CLAUDE.md` (root or `.claude/CLAUDE.md`), stop and ask the user to run `/init` inside it first, or write one from `templates/child-CLAUDE.md` with the commands they give you.
+- Note whether the folder has a `CLAUDE.md` (root or `.claude/CLAUDE.md`). When it has none, the screening worker drafts one (step 2) and you write it after the user confirms it (step 4); nobody has to run `/init` by hand.
 
 ## 2. Screen through a worker
 
@@ -39,16 +39,21 @@ Write the entry in exactly this shape as your Answer:
 - Screened at: <short hash> (<today>, on <branch>)
 
 Under Not determined, list every line you could not fill and why. Under Evidence, the file and line for each claim.
+
+If this repository has no CLAUDE.md (root or .claude/CLAUDE.md), add a section "## Proposed CLAUDE.md" containing one fenced markdown block: the file at <workspace>/templates/child-CLAUDE.md with every placeholder filled from what you found. The install, test, lint and run commands must be the ones the manifest or docs define; run the test command once if it is quick and say whether it passed. Keep the Rules section as it is in the template and keep the Layout to a few lines.
 ```
+
+Replace `<workspace>` in the block with the absolute workspace path so the worker can read the template.
 
 ## 3. Confirm
 
 When the report is in, read it and cross-check the draft against `REPOS.md`: which existing entries expose what this repo consumes, and which consume what it exposes (topic names, package names and URLs are the usual joins). Fill `Consumed by` from that. Mark `Workflow: own` only when the repo ships its own agent workflow that conflicts with the worker rules (agents allowed to push or open pull requests on their own, an issue-driven flow of its own).
 
-Show the draft and the open questions. Wait for the user's answer and apply their corrections before writing anything.
+Show the draft, the proposed `CLAUDE.md` when there is one, and the open questions. Wait for the user's answer and apply their corrections before writing anything.
 
 ## 4. Write
 
+- When a `CLAUDE.md` was proposed and confirmed, write it to `<folder>/CLAUDE.md` with the Write tool. It is the only file this session ever writes inside a repository, it stays untracked, and the user commits it in the repo if they want it shared; say so.
 - Insert the entry into `REPOS.md` in alphabetical order by folder name.
 - For every existing entry named in the new entry's `Consumes`, add this repo to that entry's `Consumed by` line with the citing file. For every existing entry that consumes what this repo exposes, add it to the new entry's `Consumed by` line.
 - Run `.claude/skills/dispatch/finish-lookup.sh --plan <abs plan>` for the screening lookup.

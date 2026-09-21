@@ -12,7 +12,7 @@ Run from the workspace root. This is the only place in the workflow that pushes.
 
 1. `plans/<workstream>/README.md` has an `## Integration <date>` block, and the latest one contains the exact text `Ready for ship-workstream: yes`. Anything else, including `no, because ...`, stops here: run `/integrate` first.
 2. `NOTES.md` has no unresolved entry.
-3. For each repo in the plan, from `plans/<workstream>/.dispatch/workers.tsv` (tab-separated: started-at, repo, agent name, runner, herdr workspace id or pid, pane id, checkout path, effort, harness, model) get the checkout path, and from `REPOS.md` the `PR target`. A repo with no row uses `.worktrees/<workstream>/<repo>` if it exists, else the main checkout; say which. Then run the deterministic preflight:
+3. For each repo in the plan, from `plans/<workstream>/.dispatch/workers.tsv` (tab-separated: started-at, repo, agent name, runner, window id, pane id, checkout path, effort, harness, model) get the checkout path, and from `REPOS.md` the `PR target`. A repo with no row uses `.worktrees/<workstream>/<repo>` if it exists, else the main checkout; say which. Then run the deterministic preflight:
 
    ```bash
    .claude/skills/ship-workstream/preflight.sh --checkout <abs checkout> --target <PR target> --branch <workstream>

@@ -22,7 +22,7 @@ while [ $# -gt 0 ]; do case "$1" in
 case "$mode" in
 check)
   missing=0
-  for t in git jq gh herdr claude; do
+  for t in git jq gh claude; do
     if command -v "$t" >/dev/null 2>&1; then
       v="$("$t" --version 2>/dev/null | head -1 | cut -c1-60)"; printf 'ok       %-6s %s\n' "$t" "$v"
     else printf 'MISSING  %-6s ' "$t"; case "$t" in
@@ -32,6 +32,9 @@ check)
         claude) echo "Claude Code: https://code.claude.com";;
         *) echo "";; esac; missing=1; fi
   done
+  if command -v herdr >/dev/null 2>&1; then printf 'ok       %-6s %s\n' herdr "$(herdr --version 2>/dev/null | head -1)"
+  elif command -v tmux >/dev/null 2>&1; then printf 'ok       %-6s %s (worker windows open here)\n' tmux "$(tmux -V 2>/dev/null)"
+  else echo "MISSING  herdr or tmux: worker windows need one of them. tmux comes from your package manager; herdr: https://github.com/herdr-dev/herdr"; missing=1; fi
   if command -v gh >/dev/null 2>&1; then gh auth status >/dev/null 2>&1 && echo "ok       gh is logged in" || { echo "note     gh is not logged in; run: gh auth login (needed only to open pull requests)"; }; fi
   exit $missing;;
 init)

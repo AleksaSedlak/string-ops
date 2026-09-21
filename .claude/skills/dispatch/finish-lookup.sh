@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # End of a lookup, in one command: every report is in, learnings are harvested, cross-repo ties the
-# reports revealed are recorded in REPOS.md, the metrics row is written, and the workers' herdr
-# workspaces are closed. The plan folder and its reports stay.
+# reports revealed are recorded in REPOS.md, the metrics row is written, and the workers'
+# windows are closed. The plan folder and its reports stay.
 #
 #   finish-lookup.sh --plan <abs path to plans/q-<slug>> [--force]
 #
@@ -11,6 +11,7 @@
 # worker that is still working is never closed.
 set -uo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$D/backend.sh"
 WS="${WORKSPACE_ROOT:-$(cd "$D/../../.." && pwd)}"
 PLAN=""; FORCE=0
 while [ $# -gt 0 ]; do case "$1" in --plan) PLAN="$2"; shift 2;; --force) FORCE=1; shift;; *) echo "unknown argument: $1" >&2; exit 2;; esac; done
@@ -32,16 +33,17 @@ else "$WS/.claude/skills/wrap-workstream/metrics.sh" --plan "$PLAN" && { mkdir -
 
 echo "--- workspaces"
 tsv="$PLAN/.dispatch/workers.tsv"
-if [ -f "$tsv" ] && command -v herdr >/dev/null; then
-  awk -F'\t' '$4=="herdr" {print $3 "\t" $5}' "$tsv" | sort -u -k2,2 | while IFS=$'\t' read -r name wsid; do
+if [ -f "$tsv" ] && [ "$(be_name)" != none ]; then
+  awk -F'\t' '{print $2 "\t" $3 "\t" $5 "\t" $6}' "$tsv" | sort -u -k3,3 | while IFS=$'\t' read -r repo name wsid pane; do
     [ -n "$wsid" ] || continue
-    st="$(herdr agent get "$name" 2>/dev/null | jq -r '.result.agent.agent_status // "gone"')"
+    st="$(be_status "$name" "$pane" "$PLAN/.dispatch/state/$repo")"
     case "$st" in
       working|blocked) echo "kept $wsid: $name is $st (steer it or wait, then re-run)";;
-      *) if herdr workspace close "$wsid" >/dev/null 2>&1; then echo "closed herdr workspace $wsid ($name)"; else echo "workspace $wsid already closed"; fi;;
+      gone) echo "window $wsid already closed";;
+      *) be_close "$wsid" && echo "closed $(be_name) window $wsid ($name)" || echo "window $wsid already closed";;
     esac
   done
-else echo "no herdr workers recorded"; fi
+else echo "no worker windows recorded"; fi
 
 echo "--- reports"
 for r in $repos; do [ -f "$PLAN/reports/$r.md" ] && echo "$PLAN/reports/$r.md"; done

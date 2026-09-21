@@ -47,10 +47,27 @@ g "ls -la src && git status" 2>/dev/null | grep -q '"permissionDecision":"allow"
 out="$(g "npm test" 2>/dev/null)"; [ -z "$out" ] && pass "guard passes other commands through" || bad "guard pass-through"
 WORKSTREAM_ALLOW_MERGE=staging g "git merge --no-edit origin/staging" >/dev/null 2>&1; [ $? = 0 ] && pass "guard allows the catch-up merge only with the env set" || bad "guard catch-up merge"
 
+# backend layer and worker state
+[ "$(WORKER_BACKEND=tmux "$S/dispatch/backend.sh" name)" = tmux ] && [ "$(WORKER_BACKEND=herdr "$S/dispatch/backend.sh" name)" = herdr ] && pass "backend follows WORKER_BACKEND" || bad "backend name"
+sf="$FIX/state-test"; WORKER_STATE_FILE="$sf" "$S/dispatch/state.sh" working; WORKER_STATE_FILE="$sf" "$S/dispatch/state.sh" idle
+[ "$(cut -d' ' -f1 "$sf")" = idle ] && pass "state.sh records the worker state" || bad "state.sh"
+printf '{"notification_type":"permission_prompt"}' | WORKER_STATE_FILE="$sf" "$S/dispatch/state.sh" from-notification; [ "$(cut -d' ' -f1 "$sf")" = blocked ] && pass "state.sh maps a permission prompt to blocked" || bad "state.sh notification"
+if command -v tmux >/dev/null 2>&1; then
+  export WORKER_BACKEND=tmux TMUX_SESSION="check-$$"
+  o="$(. "$S/dispatch/backend.sh"; be_open "smoke/alpha" "$WS/alpha" "WORKER_STATE_FILE=$sf")"; id="${o%%	*}"
+  [ -n "$id" ] && tmux has-session -t "$TMUX_SESSION" 2>/dev/null && pass "tmux backend opens a window" || bad "tmux open"
+  st="$(. "$S/dispatch/backend.sh"; be_status smoke "$id" "$sf")"; [ "$st" = gone ] && pass "tmux backend reports a window without claude as gone" || bad "tmux status ($st)"
+  (. "$S/dispatch/backend.sh"; be_prompt smoke "$id" "echo smoke-ok") ; sleep 1
+  (. "$S/dispatch/backend.sh"; be_read smoke "$id" 20) | grep -q 'smoke-ok' && pass "tmux backend prompts and reads a window" || bad "tmux prompt/read"
+  (. "$S/dispatch/backend.sh"; be_close "$id"); tmux kill-session -t "$TMUX_SESSION" 2>/dev/null; pass "tmux backend closes the window"
+  unset WORKER_BACKEND TMUX_SESSION
+else echo "SKIP tmux backend smoke (tmux not installed)"; fi
+
 # a lookup plan on the fixture: dry-run start, link detection, learnings, metrics, finish
 P="$WS/plans/q-check"; mkdir -p "$P/reports"
 printf '# Lookup - check\n\nRepos: alpha\n\n## Question\n\nWhat does alpha export?\n' > "$P/TASK.md"
 "$S/dispatch/start-worker.sh" --workspace "$WS" --plan "$P" --repo alpha --branch q-check --read-only --dry-run 2>/dev/null | grep -q '^dry-run: would start worker q-check-alpha' && pass "start-worker dry run (read-only)" || bad "start-worker dry run"
+WORKER_BACKEND=tmux "$S/dispatch/start-worker.sh" --workspace "$WS" --plan "$P" --repo alpha --branch q-check --read-only --dry-run 2>/dev/null | grep -q '^dry-run: would start worker q-check-alpha' && pass "start-worker dry run under tmux" || bad "start-worker dry run tmux"
 [ -f "$P/.dispatch/alpha.settings.json" ] && grep -q "$S/dispatch/guard.sh" "$P/.dispatch/alpha.settings.json" && pass "worker profile rendered with real hook paths" || bad "worker profile rendered"
 printf '# Report - alpha\n\nRead at: main @ abc1234\n\n## Answer\n\nalpha exports name. The sibling repo beta consumes it; beta was not read.\n\n## Evidence\n\n- src/index.js:1\n\n## Not determined\n\n- beta not checked\n\n## Learnings verified\n\nNone\n\n## Learnings\n\n- Tests run with node --test, not jest.\n' > "$P/reports/alpha.md"
 printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%Y-%m-%dT%H:%M:%S)" alpha q-check-alpha herdr wX wX:p1 "$WS/alpha" medium claude default main abc1234 >> "$P/.dispatch/workers.tsv"

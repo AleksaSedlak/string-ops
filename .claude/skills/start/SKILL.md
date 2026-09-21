@@ -11,7 +11,7 @@ The mechanics live in `start.sh` next to this file; read its header once. Run ev
 
 ## 1. Tools
 
-Run `start.sh --check`. If anything is missing, show the lines and stop; nothing works without git, jq and herdr, and the ship step needs gh. Do not try to install tools for the user.
+Run `start.sh --check`. If anything is missing, show the lines and stop; nothing works without git, jq and one of herdr or tmux, and the ship step needs gh. Do not try to install tools for the user.
 
 ## 2. Instance files
 
@@ -23,8 +23,7 @@ Run `start.sh --repos`.
 
 **Repositories are there.** For every folder without an entry:
 
-- If it has no `CLAUDE.md`, say so and ask the user to run `/init` inside it first, or offer to write one from `templates/child-CLAUDE.md` with the commands the user gives you. The registry depends on each repo stating its own rules.
-- Register it with `/add-repo`. That skill screens the repo through a read-only worker, so several repos can be screened at once, up to the worker cap. Start them all, then confirm the drafts with the user one at a time in the order they finish.
+- Register it with `/add-repo`. That skill screens the repo through a read-only worker and, when the repo has no `CLAUDE.md`, has the same worker draft one from `templates/child-CLAUDE.md` with the real install, test, lint and run commands it found. Several repos can be screened at once, up to the worker cap: start them all, then confirm the drafts with the user in the order they finish. A confirmed `CLAUDE.md` is written into the repo untracked; the user decides whether to commit it there.
 
 When every repo has an entry, write the first `ROUTING.md` rows: one row per area you can see in the registry's `Touch when` and `Does` lines, using the words a request would use. Show the table and ask the user to correct it.
 

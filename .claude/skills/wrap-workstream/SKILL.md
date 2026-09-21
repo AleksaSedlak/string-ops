@@ -86,7 +86,7 @@ Only after explicit yes:
 
 `rm -rf <folder>/<workstream>/`. The folder is self-contained, so a single recursive remove retires the whole workstream. No need to touch anything else.
 
-Before asking, run `.claude/skills/wrap-workstream/metrics.sh --plan <abs plan>`; it appends the workstream's row to `METRICS.md` (repos, workers, harness and model, effort, dispatch-to-report time, relaunches, blocked events, review gaps, verification results, unplanned files, PRs and their merged, closed and review-round counts from GitHub) and prints it. The row is the only record that survives the delete. Then: `plans/` is not under version control; the delete is final. Say so in the confirmation line. Then retire the worker checkouts: for each repo listed in `.dispatch/workers.tsv` whose checkout is under `.worktrees/<workstream>/`, run `git -C <repo> worktree remove .worktrees/<workstream>/<repo>` (add `--force` only if the user confirms the leftover files are disposable), then `git -C <repo> worktree prune`. Leave the workstream branches in place; they are merged and the user may delete them on GitHub. Close the herdr workspaces dispatch opened (`herdr workspace close <id>`, ids in `workers.tsv`) if they are still open.
+Before asking, run `.claude/skills/wrap-workstream/metrics.sh --plan <abs plan>`; it appends the workstream's row to `METRICS.md` (repos, workers, harness and model, effort, dispatch-to-report time, relaunches, blocked events, review gaps, verification results, unplanned files, PRs and their merged, closed and review-round counts from GitHub) and prints it. The row is the only record that survives the delete. Then: `plans/` is not under version control; the delete is final. Say so in the confirmation line. Then retire the worker checkouts: for each repo listed in `.dispatch/workers.tsv` whose checkout is under `.worktrees/<workstream>/`, run `git -C <repo> worktree remove .worktrees/<workstream>/<repo>` (add `--force` only if the user confirms the leftover files are disposable), then `git -C <repo> worktree prune`. Leave the workstream branches in place; they are merged and the user may delete them on GitHub. Close the worker windows dispatch opened (`.claude/skills/dispatch/backend.sh close <id>`, ids in `workers.tsv`) if they are still open.
 
 ## Phase 4 - Report
 
@@ -97,7 +97,7 @@ Wrapped <workstream>.
 
 Removed:
 - <folder>/<workstream>/ (<N> files)
-- <.worktrees/<workstream>/ (<M> checkouts), herdr workspaces <ids>>
+- <.worktrees/<workstream>/ (<M> checkouts), worker windows <ids>>
 
 Metrics row: <the row appended to METRICS.md>
 Release note: <surfaced inline above | skipped per request>

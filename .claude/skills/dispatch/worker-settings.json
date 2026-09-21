@@ -96,6 +96,24 @@
             "command": "__SKILL_DIR__/guard.sh"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "__SKILL_DIR__/state.sh working"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "__SKILL_DIR__/state.sh working"
+          }
+        ]
       }
     ],
     "Notification": [
@@ -105,6 +123,20 @@
           {
             "type": "command",
             "command": "__SKILL_DIR__/notify.sh"
+          },
+          {
+            "type": "command",
+            "command": "__SKILL_DIR__/state.sh from-notification"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "__SKILL_DIR__/state.sh idle"
           }
         ]
       }

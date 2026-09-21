@@ -18,7 +18,7 @@ Then, inside Claude Code:
 /start
 ```
 
-That is the only command to learn. `/start` checks your tools, registers any repositories you have dropped into the folder (or creates the first one if the folder is empty), and ends with: "Now just talk. Ask a question, or describe a change."
+That is the only command to learn. `/start` checks your tools, registers any repositories you have dropped into the folder, writes a `CLAUDE.md` for any repo that lacks one (or creates the first repository if the folder is empty), and ends with: "Now just talk. Ask a question, or describe a change."
 
 To bring in repositories, clone them into the folder as siblings before or after `/start`. Each stays its own git repository with its own rules.
 
@@ -45,7 +45,7 @@ One worker, one repo, one report, done.
 ## How it works
 
 - **The coordinator never touches code.** It routes from a registry (`REPOS.md`, one entry per repo: what it owns, exposes, consumes, and when to touch it) and a vocabulary (`ROUTING.md`). Everything inside a repo is read by a worker.
-- **Workers are ordinary Claude Code sessions** started in a terminal window you can watch, one per repo, in a git worktree so they never collide. A permission profile and a guard hook stop them from pushing, merging, tagging, opening pull requests, touching protected branches, running deploy tooling or reading credential files, however the command is spelled.
+- **Workers are ordinary Claude Code sessions** started in a terminal window you can watch (tmux or herdr), one per repo, in a git worktree so they never collide. A permission profile and a guard hook stop them from pushing, merging, tagging, opening pull requests, touching protected branches, running deploy tooling or reading credential files, however the command is spelled.
 - **Files are the only channel.** A plan folder holds the contract, the task files, and one report per worker. Steering a worker means dropping a note in its inbox. Nothing lives only in a chat window, so closing the coordinator loses nothing; a new session picks up from disk.
 - **Three gates.** Route, plan, integrate. Each ends with a summary and waits for you. Shipping needs a fourth yes.
 - **Waiting costs nothing.** The coordinator ends its turn while workers run and is woken by a hook when one finishes, gets stuck, or asks something.
@@ -57,7 +57,7 @@ The longer version, with every stage, file and rule, is in [docs/how-it-works.md
 
 - macOS or Linux
 - [Claude Code](https://code.claude.com)
-- [herdr](https://github.com/herdr-dev/herdr), the terminal workers run in
+- tmux, or [herdr](https://github.com/herdr-dev/herdr): the terminal the workers run in (either one; tmux comes from your package manager)
 - git, [jq](https://jqlang.github.io/jq), and the [GitHub CLI](https://cli.github.com) for pull requests
 
 `/start` checks all of them and tells you what is missing.
@@ -67,17 +67,16 @@ The longer version, with every stage, file and rule, is in [docs/how-it-works.md
 This is a first version and it says so. It grew inside one company's workspace of seventeen repositories, where the lookup path has run for real and the change path has run on test repositories end to end. What that means for you:
 
 - **Expect rough edges on your first change workstream.** Plan, dispatch, review and ship have been exercised on fixtures, not yet on a stranger's repositories. When something refuses to run, the coordinator is told to stop and say what was refused rather than work around it, so you will see it.
-- **herdr is the only backend for now.** Workers need a terminal multiplexer the coordinator can start, prompt, watch and read. herdr does exactly that. A tmux backend is next; it touches four scripts and nothing else.
+- **tmux is new.** Workers run in tmux windows or in herdr, chosen in `workflow.conf`. herdr has carried every real run so far; the tmux backend has passed the same tests but has not lived through a real workstream yet.
 - **Proven on Node, configured for the rest.** Workers are pre-approved for the build, test and dependency commands of Node, Python, Go, Rust, Ruby, Java, .NET, PHP, Elixir and Swift, and installed dependencies are copied into worktrees whichever folder the stack keeps them in. Only Node repositories have run through the flow so far.
 - **Starting from nothing is new.** `/start` can create a first repository and hand it to the flow, and that path has had less use than the drop-your-repos-in path.
 
-`tests/check.sh` proves the mechanics on throwaway repositories in a few seconds without herdr. `tests/live.sh` runs one real worker.
+`tests/check.sh` proves the mechanics on throwaway repositories in a few seconds, no worker windows needed. `tests/live.sh` runs one real worker in whichever backend you have.
 
 ## Roadmap
 
-1. A tmux backend.
-2. One real workstream on a stranger's repositories, and the fixes it finds.
-3. Per-worker token usage in the metrics rows.
+1. One real workstream on a stranger's repositories, and the fixes it finds.
+2. Per-worker token usage in the metrics rows.
 
 ## If you want the wheel
 
@@ -115,7 +114,7 @@ plans/             one folder per workstream or lookup while it runs
 learnings/         pending gotchas per repo, awaiting verification
 .claude/skills/    the commands and the scripts behind them
 templates/         what /start copies from
-tests/             check.sh (fast, no herdr) and live.sh (one real worker)
+tests/             check.sh (fast, no windows) and live.sh (one real worker)
 ```
 
 ## License

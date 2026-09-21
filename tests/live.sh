@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# The one check that needs the real thing: start a read-only worker in herdr on the fixture repo, wait
-# for it, finish the lookup. Takes a few minutes and uses your Claude Code session. Requires herdr.
-#   tests/live.sh
+# The one check that needs the real thing: start a read-only worker on the fixture repo in whichever
+# backend you have, wait for it, finish the lookup. Takes a few minutes and uses your Claude Code session.
+#   tests/live.sh                 auto backend (herdr when installed, else tmux)
+#   WORKER_BACKEND=tmux tests/live.sh
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; S="$ROOT/.claude/skills"
-command -v herdr >/dev/null || { echo "herdr is not installed; tests/check.sh covers everything else"; exit 1; }
+. "$S/dispatch/backend.sh"; be_require || { echo "no worker backend; tests/check.sh covers everything else"; exit 1; }; echo "backend: $(be_name)"
 FIX="$(mktemp -d)"; export WORKSPACE_ROOT="$FIX/ws"; WS="$FIX/ws"
 "$ROOT/tests/make-fixtures.sh" "$FIX" >/dev/null
 P="$WS/plans/q-live"; mkdir -p "$P/reports"
@@ -25,7 +26,7 @@ Read only: change no file in the repository, commit nothing, install nothing. Fo
 
 Write $P/reports/alpha.md with the answer, evidence, and what you could not determine.
 EOF
-echo "starting a worker in herdr (background window)..."
+echo "starting a worker (background window)..."
 "$S/dispatch/start-worker.sh" --workspace "$WS" --plan "$P" --repo alpha --branch q-live --read-only || exit 1
 echo "waiting for it to settle..."
 "$S/dispatch/watch.sh" --plan "$P" --max-seconds 900
@@ -34,5 +35,5 @@ if [ -f "$P/reports/alpha.md" ]; then
   "$S/dispatch/finish-lookup.sh" --plan "$P"
   echo "PASS live lookup finished; fixture at $WS (delete it when done)"
 else
-  echo "FAIL no report; read the worker: herdr agent read q-live-alpha --source recent-unwrapped --lines 80"; exit 1
+  echo "FAIL no report; read the worker: $S/dispatch/backend.sh read q-live-alpha <pane from $P/.dispatch/workers.tsv> 80"; exit 1
 fi

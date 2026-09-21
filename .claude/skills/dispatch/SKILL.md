@@ -13,7 +13,7 @@ Run from the workspace root. Two modes:
 
 Workers are Claude Code sessions started inside a checkout of one repo, with read access to the plan folder. They never push. Files are the only channel back: `plans/<workstream>/reports/<repo>.md`.
 
-The mechanical parts live in this skill folder; read each header once and do not reimplement them inline: `start-worker.sh` (start one worker), `watch.sh` (wait for the first worker to settle; also the coordinator's Stop hook), `steer.sh` (send a worker an instruction through its inbox), `WORKER-RULES.md` (the single owner of the worker protocol; copied into every plan folder), `link-repos.sh` (reads the reports for mentions of other registry repos and records each new tie as a `Linked:` line on both REPOS.md entries, so contracts the code does not show as imports reach the registry without hand edits), `finish-lookup.sh` (end of a lookup: reports present, learnings, links, metrics row, worker workspaces closed), `learn.sh` (learnings lifecycle: new bullets from reports go to `learnings/<repo>.md` as pending; the next worker in that repo verifies them in passing and reports verdicts; the harvest then removes each verified bullet, promoting true ones into that repo's `CLAUDE.local.md`, which is globally gitignored. Nothing on this path can be pushed; the script refuses to write any git-tracked file). It also pre-trusts the repo path for Claude Code and starts the worker with `worker-settings.json`: a broad allow list, auto permission mode so routine prompts (shell loops, expansions) are answered by the classifier instead of stalling, a deny list, and the `guard.sh` PreToolUse hook that blocks push, merge, tag, protected-branch checkout, PR creation, publish and cloud tooling in any spelling. Do not weaken either file to get a worker past a block; the block is the point. `start-worker.sh` also refuses when `WORKER_CAP` workers (workflow.conf, default 10) are already working or blocked; wait for reports rather than raising it, and raise it only for one start with `WORKER_CAP=<n>` in the environment when the user says so.
+The mechanical parts live in this skill folder; read each header once and do not reimplement them inline: `backend.sh` (the only place that talks to herdr or tmux: open, start, status, read, prompt, close; `state.sh` is the worker-side hook that reports working, blocked or idle), `start-worker.sh` (start one worker), `watch.sh` (wait for the first worker to settle; also the coordinator's Stop hook), `steer.sh` (send a worker an instruction through its inbox), `WORKER-RULES.md` (the single owner of the worker protocol; copied into every plan folder), `link-repos.sh` (reads the reports for mentions of other registry repos and records each new tie as a `Linked:` line on both REPOS.md entries, so contracts the code does not show as imports reach the registry without hand edits), `finish-lookup.sh` (end of a lookup: reports present, learnings, links, metrics row, worker workspaces closed), `learn.sh` (learnings lifecycle: new bullets from reports go to `learnings/<repo>.md` as pending; the next worker in that repo verifies them in passing and reports verdicts; the harvest then removes each verified bullet, promoting true ones into that repo's `CLAUDE.local.md`, which is globally gitignored. Nothing on this path can be pushed; the script refuses to write any git-tracked file). It also pre-trusts the repo path for Claude Code and starts the worker with `worker-settings.json`: a broad allow list, auto permission mode so routine prompts (shell loops, expansions) are answered by the classifier instead of stalling, a deny list, and the `guard.sh` PreToolUse hook that blocks push, merge, tag, protected-branch checkout, PR creation, publish and cloud tooling in any spelling. Do not weaken either file to get a worker past a block; the block is the point. `start-worker.sh` also refuses when `WORKER_CAP` workers (workflow.conf, default 10) are already working or blocked; wait for reports rather than raising it, and raise it only for one start with `WORKER_CAP=<n>` in the environment when the user says so.
 
 ## Refusals, before anything starts
 
@@ -21,7 +21,7 @@ The mechanical parts live in this skill folder; read each header once and do not
 - A bucket for a repo whose `REPOS.md` entry says `Workflow: own`: do not start a worker. Tell the user that repo's part is handled through its own flow and list what the plan expects from it.
 - A bucket for a package release (nest-db-schema): do not start a worker unless the task is only a code change; the publish step is the user's.
 - Any `NOTES.md` entry left unresolved from an earlier wave: stop and show it.
-- herdr not reachable (`herdr workspace list` fails): stop and tell the user; workers run only in herdr and there is no fallback runner.
+- no worker backend (`backend.sh name` prints `none`): stop and tell the user; workers need herdr or tmux, chosen by `WORKER_BACKEND` in `workflow.conf`.
 
 ## Plan mode
 
@@ -34,7 +34,7 @@ The mechanical parts live in this skill folder; read each header once and do not
    ```
 
    Effort defaults to `high` for change work and `medium` for read-only lookups (the user's policy: planning at xhigh in this session, coding at high, reading below high); pass `--effort` to override for one worker and say why in the README. `--no-worktree` only for repos the registry marks that way; the script then requires a clean checkout and refuses otherwise. Do not clean, stash or reset anything to make it pass; tell the user.
-3. Record what the script prints (agent name, herdr workspace, pane, checkout path) in the README under a `## Dispatch` heading with the date and wave number.
+3. Record what the script prints (worker name, window id, pane, checkout path) in the README under a `## Dispatch` heading with the date and wave number.
 4. Wait for the wave without polling. End your turn and tell the user the workers are running; the workspace's Stop hook runs `watch.sh --hook` in the background, and it wakes this session with one line (`done`, `blocked` or `stopped`, with repo and plan) when the first worker settles. When woken, act on that line and end the turn again; the hook re-arms after every turn until no worker is live. Inside a skill that must wait synchronously (a no-plan task the user is waiting on), run `watch.sh` in the foreground instead; it blocks up to six hours and prints the same line.
    - `done`: read the report. When every repo in the wave has one, the wave is complete.
    - `blocked`: the line carries the last lines of the pane. If the pane is a question the task file or handoff already answers, answer it with `steer.sh` (see below). Otherwise show the user what the worker is asking and wait for their answer; never answer a permission prompt yourself.
@@ -42,7 +42,7 @@ The mechanical parts live in this skill folder; read each header once and do not
    A worker that needs a person also fires a desktop notification (the Notification hook in `worker-settings.json`), so the user sees it even when this session is idle.
 5. A wave is complete when `reports/<repo>.md` exists for every repo in it. Check `NOTES.md` after every wave; an unresolved entry stops the next wave.
 6. Between waves, do the step the README names (a published package version, regenerated types, a running branch). If it needs the user, stop and say what.
-7. Start the next wave. After the last wave, tell the user every report is in and `/integrate` is next. Leave the herdr workspaces open; `integrate` and `ship-workstream` use the checkouts.
+7. Start the next wave. After the last wave, tell the user every report is in and `/integrate` is next. Leave the worker windows open; `integrate` and `ship-workstream` use the checkouts.
 
 ## No-plan mode
 
@@ -113,11 +113,11 @@ Never type content into a worker's pane. Write it with `steer.sh --plan <abs pla
 
 Go one rung at a time and stop at the first that works. Record what you did in the plan README under `## Dispatch`.
 
-1. Look: `herdr agent read <name> --source recent-unwrapped --lines 80`. A worker that is still producing output is not stuck; low context or a slow test run is not a wedge.
+1. Look: `backend.sh read <name> <pane> 80` (name and pane from `workers.tsv`; with tmux you can also `tmux attach -t workers`). A worker that is still producing output is not stuck; low context or a slow test run is not a wedge.
 2. Inbox: if the worker's pane shows a question that the task file, handoff, contract or WORKER-RULES already answers, answer it with `steer.sh` and wait for the next settle.
 3. User: if the question is a real decision, show it to the user with the pane excerpt and wait. Do not guess.
-4. Interrupt and redirect: if the worker is looping or has wandered off task, `herdr agent send-keys <name> esc`, then `steer.sh` with what to do instead.
-5. Relaunch: if the pane is dead, the agent is `gone`, or interrupting did not help, close its herdr workspace (`herdr workspace close <id>`, id from `workers.tsv`) and run `start-worker.sh` again for that repo with `--prompt "Resume the tasks in <bucket>: <one line on what happened and what to do differently>"`. The worktree and branch are reused, so committed work is kept.
+4. Interrupt and redirect: if the worker is looping or has wandered off task, `backend.sh keys <name> <pane> esc`, then `steer.sh` with what to do instead.
+5. Relaunch: if the pane is dead, the agent is `gone`, or interrupting did not help, close its window (`backend.sh close <id>`, id from `workers.tsv`) and run `start-worker.sh` again for that repo with `--prompt "Resume the tasks in <bucket>: <one line on what happened and what to do differently>"`. The worktree and branch are reused, so committed work is kept.
 6. Fail: if a relaunch also stalls, write a report stub `reports/<repo>.md` yourself with `## Tasks done` "none: worker failed", the pane excerpt under `## Open questions`, and tell the user. Never delete the worktree or branch.
 
 ## After dispatch
@@ -129,4 +129,4 @@ Go one rung at a time and stop at the first that works. Record what you did in t
 
 - Never push, merge, tag or open a PR from this skill.
 - Never write the approval line, clean a dirty checkout, or answer a worker's permission prompt on the user's behalf.
-- Never start a second worker for a repo that already has a live agent of the same name; `herdr agent list` shows them.
+- Never start a second worker for a repo that already has a live worker of the same name; `status.sh` lists them.

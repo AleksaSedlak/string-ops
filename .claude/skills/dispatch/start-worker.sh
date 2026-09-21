@@ -11,10 +11,9 @@
 #   3. checkout: a git worktree under <workspace>/.worktrees/<branch>/<repo> on the workstream
 #      branch, or (--no-worktree) the main checkout, which must be clean
 #   4. copy the repo's untracked rule files (CLAUDE.md, .claude/) into the worktree
-#   5. start the worker: a herdr workspace + claude agent in auto permission mode (routine prompts are
-#      answered by the classifier; guard.sh and the deny list still hard-block the dangerous commands).
-#      herdr is required; there is no other runner (the background `claude -p` path was removed 2026-09-21
-#      as untested and unsteerable)
+#   5. start the worker: a window in the worker backend (herdr or tmux, see backend.sh) running claude in
+#      auto permission mode (routine prompts are answered by the classifier; guard.sh and the deny list
+#      still hard-block the dangerous commands)
 #   6. record the worker in <plan>/.dispatch/workers.tsv (columns: stamp, repo, name, runner, workspace id,
 #      pane, checkout, effort, harness, model, branch, commit; branch and commit are what the worker saw)
 #
@@ -30,7 +29,7 @@
 #
 # It never pushes, never touches main/master/staging, and never reads credential files.
 set -euo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/backend.sh"
 
 WORKSPACE=""; PLAN=""; REPO=""; BRANCH=""; WORKTREE=1; NOPLAN=0; READONLY=0; CATCHUP=0; PROMPT=""; DRY=0; EFFORT=""; MODEL=""
 while [ $# -gt 0 ]; do
@@ -185,25 +184,22 @@ if [ -f "$CJ" ]; then
   done
 fi
 
-# hard cap on live workers (WORKER_CAP in workflow.conf). Counts named herdr agents that are working or
-# blocked; finished or idle workers do not count. Override for one start with WORKER_CAP=<n> in the environment.
+# hard cap on live workers (WORKER_CAP in workflow.conf). Counts workers that are working or blocked
+# across every plan; finished or idle workers do not count. Override for one start with WORKER_CAP=<n>.
+be_require || fail "no worker backend; install herdr or tmux"
 CAP="$WORKER_CAP"
-command -v herdr >/dev/null || fail "herdr is not installed or not on PATH; workers run only in herdr"
-live="$(herdr agent list 2>/dev/null | jq '[.result.agents[]? | select(.name != null and (.agent_status == "working" or .agent_status == "blocked"))] | length' 2>/dev/null || echo 0)"
+live="$(be_live_count "$WORKSPACE/plans")"
 [ "${live:-0}" -lt "$CAP" ] || fail "$live workers are live, cap is $CAP; wait for reports or start with WORKER_CAP=$((live+1)) if the user says so"
 
-if [ "$CATCHUP" = 1 ]; then created="$(herdr workspace create --cwd "$WT" --label "$BRANCH/$REPO" --env "WORKSTREAM_ALLOW_MERGE=$TARGET" --no-focus)"
-else created="$(herdr workspace create --cwd "$WT" --label "$BRANCH/$REPO" --no-focus)"; fi
-pane="$(printf '%s\n' "$created" | jq -r '.result.root_pane.pane_id')"
-wsid="$(printf '%s\n' "$created" | jq -r '.result.workspace.workspace_id')"
-[ -n "$pane" ] && [ "$pane" != null ] || fail "herdr did not return a pane: $created"
+# open the window; the worker reports its state through state.sh into this file
+STATE="$PLAN/.dispatch/state/$REPO"; mkdir -p "$PLAN/.dispatch/state"; rm -f "$STATE"
+envs=("WORKER_STATE_FILE=$STATE"); [ "$CATCHUP" = 1 ] && envs+=("WORKSTREAM_ALLOW_MERGE=$TARGET")
+opened="$(be_open "$BRANCH/$REPO" "$WT" "${envs[@]}")" || fail "could not open a worker window ($(be_name))"
+wsid="${opened%%	*}"; pane="${opened##*	}"
+[ -n "$pane" ] && [ "$pane" != null ] || fail "the $(be_name) backend returned no window: $opened"
 # record before starting, so a failed or blocked start still leaves a trace for integrate and wrap
-printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$STAMP" "$REPO" "$NAME" herdr "$wsid" "$pane" "$WT" "$EFFORT" claude "${MODEL:-default}" "$CUR" "$HEAD_SHA" >> "$PLAN/.dispatch/workers.tsv"
-herdr agent start "$NAME" --kind claude --pane "$pane" --timeout 120000 -- \
-  --add-dir "$PLAN" --permission-mode auto --effort "$EFFORT" ${MODEL:+--model "$MODEL"} --settings "$SETTINGS" --name "$NAME" >/dev/null
-herdr agent prompt "$NAME" "$PROMPT" >/dev/null
-# confirm the turn actually started; a bare `agent wait` right after a prompt can return the old idle state
-herdr agent wait "$NAME" --until working --until blocked --timeout 20000 >/dev/null || echo "warning: $NAME did not start working within 20 s; read its pane" >&2
-echo "started $NAME (herdr workspace $wsid, pane $pane, effort $EFFORT) in $WT"
-echo "wait:   herdr agent wait $NAME --timeout 1800000"
-echo "read:   herdr agent read $NAME --source recent-unwrapped --lines 120"
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$STAMP" "$REPO" "$NAME" "$(be_name)" "$wsid" "$pane" "$WT" "$EFFORT" claude "${MODEL:-default}" "$CUR" "$HEAD_SHA" >> "$PLAN/.dispatch/workers.tsv"
+BE_LAUNCH_DIR="$PLAN/.dispatch" be_start "$NAME" "$pane" "$PROMPT" --add-dir "$PLAN" --permission-mode auto --effort "$EFFORT" ${MODEL:+--model "$MODEL"} --settings "$SETTINGS" || fail "the worker did not start"
+echo "started $NAME ($(be_name) $wsid, pane $pane, effort $EFFORT) in $WT"
+echo "read:   .claude/skills/dispatch/backend.sh read $NAME $pane 120"
+echo "$(be_attach_hint)"

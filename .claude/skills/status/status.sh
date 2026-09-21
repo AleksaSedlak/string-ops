@@ -6,7 +6,15 @@ set -uo pipefail
 WS="${WORKSPACE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 PLANS="$WS/plans"; ALL=0; [ "${1:-}" = --all ] && ALL=1
 [ -d "$PLANS" ] || { echo "no plans folder"; exit 0; }
-agents="$(herdr agent list 2>/dev/null | jq -r '.result.agents[]? | select(.name != null) | "\(.name)\t\(.agent_status)"' 2>/dev/null)"
+. "$(dirname "${BASH_SOURCE[0]}")/../dispatch/backend.sh"
+agents=""
+while IFS=$'\t' read -r plan repo name id pane stamp; do
+  [ -n "$name" ] || continue
+  st="$(be_status "$name" "$pane" "$PLANS/$plan/.dispatch/state/$repo")"
+  [ "$st" = gone ] && continue
+  agents="$agents$name	$st
+"
+done <<< "$(be_rows "$PLANS")"
 finished=()
 for P in "$PLANS"/*/; do
   P="${P%/}"; slug="$(basename "$P")"
@@ -55,4 +63,4 @@ for P in "$PLANS"/*/; do
 done
 if [ ${#finished[@]} -gt 0 ]; then echo "## finished (use --all to expand)"; printf '  %s\n' "${finished[@]}"; fi
 echo "## worktrees"; ls -d "$WS"/.worktrees/*/* 2>/dev/null | sed "s#$WS/#  #" || true
-echo "## live herdr agents"; printf '%s\n' "$agents" | grep . | sed 's/^/  /'; [ -n "$agents" ] || echo "  none"
+echo "## live workers ($(be_name))"; printf '%s\n' "$agents" | grep . | sed 's/^/  /'; [ -n "$agents" ] || echo "  none"
