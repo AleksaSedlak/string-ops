@@ -46,7 +46,7 @@ is_protected() { local b; for b in $PROTECTED_BRANCHES; do [ "$1" = "$b" ] && re
 protected_alt() { printf '%s' "$PROTECTED_BRANCHES" | tr ' ' '|'; }
 
 # Modification time of a file as epoch seconds.
-file_mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0; }
+file_mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0; }  # GNU first: GNU stat accepts -f too, with other output
 # "YYYY-MM-DDTHH:MM:SS" (local time) to epoch seconds.
 stamp_epoch() { date -j -f %Y-%m-%dT%H:%M:%S "$1" +%s 2>/dev/null || date -d "$1" +%s 2>/dev/null || echo 0; }
 # "YYYY-MM-DD" to epoch seconds.

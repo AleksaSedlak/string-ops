@@ -192,7 +192,7 @@ case "$WORKER_PERMISSION_MODE" in auto|acceptEdits|default) ;; *) fail "WORKER_P
 [ "$MODEL" = default ] && MODEL=""  # no flag: the worker runs whatever model claude starts with here
 case "$MODEL" in *[!A-Za-z0-9._\[\]-]*) fail "model looks wrong: $MODEL (expected a Claude Code alias or model id)";; esac
 dirs=(--add-dir "$PLAN"); for d in ${EXTRA_DIRS[@]+"${EXTRA_DIRS[@]}"}; do dirs+=(--add-dir "$d"); done  # bash 3.2: empty array under set -u
-NAME="$(printf '%s-%s' "$BRANCH" "$REPO" | tr -c 'a-z0-9_-\n' '-' | tr '[:upper:]' '[:lower:]' | sed -E 's/^[^a-z]+//' | cut -c1-32)"
+NAME="$(printf '%s-%s' "$BRANCH" "$REPO" | tr -c 'a-z0-9_\n-' '-' | tr '[:upper:]' '[:lower:]' | sed -E 's/^[^a-z]+//' | cut -c1-32)"
 STAMP="$(date +%Y-%m-%dT%H:%M:%S)"
 
 if [ "$DRY" = 1 ]; then
