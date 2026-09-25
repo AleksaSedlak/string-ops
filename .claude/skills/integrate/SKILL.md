@@ -21,14 +21,13 @@ Run `.claude/skills/dispatch/learn.sh --plan <abs plan>` once all reports are pr
 
 Read `plans/<workstream>/.dispatch/workers.tsv` for the checkout path of each worker. Columns, tab-separated: started-at, repo, agent name, runner (`herdr` or `tmux`), window id, pane id, checkout path, effort, harness, model, branch and commit the worker started on. A repo with a report but no row was started by hand; use `.worktrees/<workstream>/<repo>` if it exists, else the main checkout, and say so.
 
-## 3. Per repo checks
+## 3. Per repo checks, mechanical only
 
-In each repo's checkout, on the workstream branch:
+The judgement work (contract respected, acceptance criteria met, tests that prove them) belongs to the independent reviewer in 3b, which has the checkout and reads the task files itself. This session runs only the deterministic checks and opens no diffs, so its context stays small for ship. In each repo's checkout, on the workstream branch:
 
 - Commits: every hash the report lists exists (`git cat-file -t <hash>`), is on the workstream branch, and is ahead of the base (`git log --oneline <base>..<branch>`; the base is `origin/<PR target>` from `REPOS.md`). One commit per task is the rule; more is a finding, not a failure.
 - Attribution: `git log <base>..<branch> --format=%B` contains no `Claude`, `AI`, `Anthropic`, `Co-Authored-By`, `Generated-by` or any other trailer, and no emoji. Any hit is a blocking finding.
 - Tree: `git status --porcelain` is empty. Untracked or modified files mean the worker left something out of its commit.
-- Contract: for each item in `CONTRACT.md` that this repo owns or consumes (endpoints, payloads, topics, types), find it in the diff (`git diff <base>..<branch>`). Grep for the route, DTO name, field or topic. Missing or different is a deviation; record the file and what differs.
 - Tests: the report's Tests section names the command and result. Then ask the user, once for the whole workstream, whether to re-run the verification independently (AskUserQuestion: yes for all repos, only some, or trust the reports). It is the user's decision because runs can be slow or need services. For each repo the user picks, run exactly the command the report names:
 
   ```bash
@@ -43,14 +42,19 @@ In each repo's checkout, on the workstream branch:
   ```
 
   Every `UNPLANNED` file is a finding unless the report explains it under Deviations; a manifest or lockfile among them is blocking until the user accepts it.
-- Acceptance criteria: each task file has `## Acceptance criteria` lines; the report has an `## Acceptance criteria` section with evidence per line. A line without evidence, or with evidence the reviewer contradicts, is a finding.
+- Acceptance criteria: the report has an `## Acceptance criteria` section with one line of evidence per criterion in the task files. A criterion with no line is a finding; whether the evidence holds is the reviewer's call.
 - Between-wave artefacts: if the README's "Between waves" step named something (a published package version, regenerated types), confirm the consumer's diff uses it (a bumped version in the manifest, regenerated files changed).
 
-Use one subagent per repo when the diffs are large; otherwise check directly.
 
 ## 3b. Independent review, one fresh reader per repo
 
-The worker that wrote a diff never grades it. For every repo with commits, start one read-only lookup worker at effort `high` (judgement, not just reading) whose only inputs are the diff, the task files for that bucket, `CONTRACT.md` and the worker's report. Create `plans/<workstream>-review-<repo>/` with `reports/` and this `TASK.md`, then `start-worker.sh --read-only --effort high --repo <repo> --branch <workstream>-review-<repo> --plan <abs path>`; start all reviewers before waiting; wait with `watch.sh`.
+The worker that wrote a diff never grades it. Dispatch starts a reviewer for every repo as soon as its wave completes, so most reviews are done or running by now; `plans/<workstream>-review-<repo>/reports/<repo>.md` is the verdict. For any repo with commits and no review folder, or whose report changed after its review started (a relaunch, a catch-up), start one now:
+
+```bash
+.claude/skills/dispatch/start-review.sh --workspace "$PWD" --plan "$PWD/plans/<workstream>" --repo <repo>
+```
+
+It writes the brief below with paths into the plan folder and starts a read-only worker on `MODEL_REVIEW` at `EFFORT_REVIEW`. Wait for every review with `watch.sh`. The brief, for reference:
 
 ```markdown
 # Lookup - review of <repo> for workstream <slug>
@@ -61,13 +65,11 @@ Repos: <repo>
 
 Review the branch `<workstream>` against its task files, their acceptance criteria and the contract. Read the diff with `git diff origin/<target>..<workstream>` and files with `git show <workstream>:<path>`; the branch lives in a worktree, so do not rely on the working tree. Report only gaps that affect correctness or a stated requirement: an acceptance criteria line not met, or met without a test proving it; a listed edge case without a test; a change to a file no task lists (say which); a departure from CONTRACT.md; a test that asserts less than the task asks. Do not report style, naming or preferences. For each gap: file and line, which requirement it breaks, and what the fix is. If you find none, say so plainly.
 
-## Inputs
+## Inputs (read with the Read tool)
 
-<paste each task file of the bucket in full>
-
-<paste the relevant CONTRACT.md sections>
-
-<paste the worker's report>
+- Task files: <abs plan>/<repo>/task-*.md
+- Contract: <abs plan>/CONTRACT.md
+- The worker's report: <abs plan>/reports/<repo>.md
 
 ## Conventions
 
@@ -75,15 +77,15 @@ Read only: change no file, commit nothing, install nothing. Follow `WORKER-RULES
 
 ## Report
 
-Write `<abs path>/reports/<repo>.md` with `## Verdict` (`ready` or `gaps`), `## Gaps` (one bullet each, or "None"), `## Not determined`, `## Learnings verified`, `## Learnings`.
+Write `<abs path>/reports/<repo>.md` with `Read at`, `## Verdict` (`ready` or `gaps`), `## Gaps`, `## Contract`, `## Not determined`, `## Learnings verified`, `## Learnings`.
 ```
 
-Carry every gap into the summary under "Review gaps". A gap that breaks a requirement or the contract blocks; a gap the reviewer marked as a missing test is a finding the user decides on. Run `learn.sh` on the review folder too.
+Carry every gap into the summary under "Review gaps" and every `## Contract` deviation under "Deviations from CONTRACT.md". A gap that breaks a requirement or the contract blocks; a gap the reviewer marked as a missing test is a finding the user decides on. Run `learn.sh` on each review folder too.
 
 ## 4. Cross-repo checks
 
 - Every `Depends on` and `Blocks` line across task files is satisfied by a done task, or the dependent task is reported as skipped.
-- Producer and consumer agree: the shape the owner's diff exposes matches what each consumer's diff calls. Payload field names, types, route paths, topic names.
+- Producer and consumer agree: each reviewer's `## Contract` section says its repo matches `CONTRACT.md`; when the owner's and a consumer's reviewers disagree about the same route, field, type or topic, that is a deviation to list, and the contract file decides who is right.
 
 ## 5. Summary and stop
 

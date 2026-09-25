@@ -9,8 +9,9 @@ WS="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 FETCH=1; ONLY=()
 for a in "$@"; do case "$a" in --no-fetch) FETCH=0;; *) ONLY+=("$a");; esac; done
 
-# files that back a registry entry: manifests, routes, contracts, notifications, deploy config, docs
-BACKING='(^|/)(package\.json|pyproject\.toml|go\.mod|README[^/]*|readme[^/]*|CONTRIBUTING[^/]*|CLAUDE\.md|cloudbuild[^/]*\.ya?ml|Dockerfile[^/]*|vercel\.json|app\.ya?ml)$|(^|/)(\.github/workflows|k8s|deploy)/|(controller|routes?|router|\.controller|\.dto|types|schema|pubsub|notification|topics|endpoints|app\.module)[^/]*\.(ts|js|mjs|py)$|^(src/)?(index|main)\.(ts|js|mjs|py)$'
+# files that back a registry entry, for any stack: manifests, docs, entry points, routes and handlers,
+# types and schemas, events and topics, CI and deploy config
+BACKING='(^|/)(package\.json|pyproject\.toml|setup\.py|Cargo\.toml|go\.mod|Gemfile|composer\.json|pom\.xml|build\.gradle[^/]*|[^/]*\.csproj|mix\.exs|Package\.swift|README[^/]*|readme[^/]*|CONTRIBUTING[^/]*|CLAUDE\.md|Dockerfile[^/]*|docker-compose[^/]*|Procfile|Makefile|cloudbuild[^/]*\.ya?ml|\.gitlab-ci\.yml|Jenkinsfile|vercel\.json|app\.ya?ml|serverless[^/]*\.ya?ml|fly\.toml)$|(^|/)(\.github/workflows|\.circleci|k8s|kubernetes|helm|deploy|terraform|infra)/|(controller|handler|routes?|router|\.controller|\.dto|types|schema|models?|events?|topics?|pubsub|queue|endpoints|api|app\.module)[^/]*\.(ts|js|mjs|py|go|rs|rb|java|kt|cs|php|ex|swift)$|^(src/|app/|lib/|cmd/[^/]+/)?(index|main|app|server)\.(ts|js|mjs|py|go|rs|rb|java|kt|cs|php|ex|swift)$'
 
 entries="$(grep -E '^## ' "$WS/REPOS.md" | sed 's/^## //')"
 for repo in $entries; do

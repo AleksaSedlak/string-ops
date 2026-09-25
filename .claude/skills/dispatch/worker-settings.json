@@ -141,5 +141,9 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "__SKILL_DIR__/../statusline.sh"
   }
 }

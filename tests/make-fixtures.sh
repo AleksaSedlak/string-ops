@@ -107,22 +107,6 @@ cat > "$P/NOTES.md" <<'EOF'
 
 Workers: if the contract cannot be implemented as written, or a task file has drifted from the code, write the problem here (repo, task, what is wrong, what you propose) and stop that task. Do not improvise around it. The integrate step reads this file first.
 EOF
-cat > "$P/AGENT-HANDOFF.md" <<'EOF'
-# Agent Handoff Protocol - Greeting
-
-## What the agent should do before writing code
-
-1. Read `CONTRACT.md` in this folder.
-2. Verify the task hasn't drifted: confirm every file the task cites exists. If a cited file does not exist and the task depends on it, do not guess: write the problem to `NOTES.md` in this folder (repo, task, what is wrong, what you propose), skip that task, and say so in your report.
-3. One branch per workstream, one commit per task. Base branch, commit format and verification per this repo's CLAUDE.md.
-4. Implement only this repo's bucket. Do not change CONTRACT.md.
-5. Never push, never open a pull request, never touch main, master or staging.
-6. End by writing `reports/<repo>.md` in this folder with these headings: `## Tasks done`, `## Commits` (hash and subject), `## Tests` (command and result), `## Deviations from the contract`, `## Open questions`.
-
-## Attribution
-
-Commit messages and code contain no references to Claude, AI or Anthropic, no co-author lines, no trailers, no emojis.
-EOF
 cat > "$P/alpha/task-1-greet.md" <<'EOF'
 # alpha Task 1 - Add greet()
 

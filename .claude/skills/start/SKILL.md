@@ -15,7 +15,7 @@ Run `start.sh --check`. If anything is missing, show the lines and stop; nothing
 
 ## 2. Instance files
 
-Run `start.sh --init`. It creates `REPOS.md`, `ROUTING.md`, `workflow.conf`, `METRICS.md`, `plans/` and `learnings/` when they do not exist and never overwrites. Then show `workflow.conf` and ask one question: keep these defaults (protected branches, worker cap, effort levels) or change something. Apply the answer with the Edit tool.
+Run `start.sh --init`. It creates `REPOS.md`, `ROUTING.md`, `workflow.conf`, `METRICS.md`, `plans/` and `learnings/` when they do not exist and never overwrites. Then show `workflow.conf` and ask one question: keep these defaults (protected branches, worker cap, model and effort per role) or change something. Apply the answer with the Edit tool.
 
 ## 3. Repos, or none
 

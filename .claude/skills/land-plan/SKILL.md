@@ -19,9 +19,9 @@ Do NOT use this skill for active planning - that's plan mode. Use this skill onl
 
 Always the workspace: output goes to `plans/<workstream>/`, one bucket folder per repo. Nothing is ever written into a child repo. Run it from the workspace root, where `REPOS.md` lives.
 
-## Phase 1 - Establish scope (AskUserQuestion-driven)
+## Phase 1 - Establish scope
 
-Before writing any file, lock the following with the user via AskUserQuestion. Don't proceed until each is confirmed.
+Before writing any file, lock the following with the user. Derive a proposed answer to every item from the plan and the routing gate first, then confirm them in at most two rounds of AskUserQuestion (it takes up to four questions per call; group Q1, Q1b, Q2 and Q3 in the first, Q4 to Q7 in the second), each question carrying your proposal as the recommended option. Do not ask one question per turn; the user has already read the plan.
 
 ### Q1. Workstream slug (folder name)
 
@@ -83,14 +83,13 @@ plans/<workstream>/
 ├── README.md            # index, waves, status, approval line
 ├── ARCHITECTURE.md      # decisions with rejected alternatives
 ├── CONTRACT.md          # endpoints, payloads, event shapes, error cases
-├── AGENT-HANDOFF.md     # workstream protocol for workers, no repo rules
 ├── WORKER-RULES.md      # copied in by dispatch: the single owner of the worker protocol
 ├── NOTES.md             # where workers record contract problems (starts empty)
 ├── reports/             # one <repo>.md per worker, written by the worker (starts empty)
 └── <repo>/task-N-<slug>[--DRAFT|--GATED].md
 ```
 
-`AGENT-HANDOFF.md` lives **inside** the workstream folder. Each workstream owns its own copy - keeps the folder self-contained (one read, no navigation up), allows per-workstream protocol, and `/wrap-workstream` retires it cleanly with the rest of the folder.
+There is no per-workstream handoff document: `WORKER-RULES.md`, copied in by dispatch, is the single owner of the worker protocol, and the worker's prompt already tells it to read `ARCHITECTURE.md`, `CONTRACT.md` and its bucket. Everything a worker needs is in the folder; nothing is restated.
 
 ## Phase 3 - Templates
 
@@ -236,7 +235,6 @@ The "what" lives in [`README.md`](./README.md). This file is the "why."
 ## Cross-references
 
 - Plan README: [`README.md`](./README.md)
-- Agent handoff protocol: [`./AGENT-HANDOFF.md`](./AGENT-HANDOFF.md)
 - Sibling workstreams: <list other workstreams in the same folder>
 
 If you're picking up a task and find yourself wanting to change something documented here, **stop and ask the user first** - these decisions were made deliberately and the alternatives were considered.
@@ -291,7 +289,7 @@ Workers: if the contract cannot be implemented as written, or a task file has dr
 > **Status:** landed <date>, awaiting approval<, with N `--DRAFT` and M `--GATED` tasks if any>. (Dispatch refuses to start until this line reads `approved <date>`, written by the user.)
 > **Scope:** <the list of repos, contract owner first>
 > **Backwards compatibility:** <the Q5 answer, one line>
-> **First time picking this up?** Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) before touching any task (captures the *why* behind the design), and [`./AGENT-HANDOFF.md`](./AGENT-HANDOFF.md) for the handoff protocol.
+> **First time picking this up?** Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) before touching any task (captures the *why* behind the design), and `WORKER-RULES.md` for the worker protocol.
 
 ## Why this exists
 
@@ -333,71 +331,9 @@ These decisions inform every task file. Re-open only with reason. (Full rational
 ## Cross-references
 
 - Design rationale: [`./ARCHITECTURE.md`](./ARCHITECTURE.md)
-- Agent handoff protocol: [`./AGENT-HANDOFF.md`](./AGENT-HANDOFF.md)
 - <Contract: [`./CONTRACT.md`](./CONTRACT.md); Notes: [`./NOTES.md`](./NOTES.md); Reports: `./reports/`>
 - Sibling workstreams: <list>
 - Parent planning conversation: `~/.claude/plans/<plan-filename>.md`
-```
-
-### AGENT-HANDOFF.md template (written fresh inside every workstream folder)
-
-```markdown
-# Agent Handoff Protocol - <Workstream Title>
-
-How to pick up a task from this folder with a fresh session.
-
-This document is for the **human** kicking off the agent, and for the dispatch step that starts workers>. The agent itself follows the task file it's handed.
-
----
-
-## Handing off a task
-
-**One sentence is enough.** Give the agent the absolute path to the task fileor to its repo's bucket folder> and tell it to execute. Example:
-
-> "Execute the task at `<absolute-path>/<workstream>/<bucket>/task-N-<slug>.md`. Verify file paths and line numbers in the task haven't drifted before relying on them."
-
-That's it. The task file is self-contained (Context, Scope, Files, Interface contract, Test plan, BC/rollback). Don't over-brief - the file does the work.
-
----
-
-## What the agent should do before writing code
-
-1. **Read [`ARCHITECTURE.md`](./ARCHITECTURE.md)** if it exists. Captures the *why* behind the design so the agent doesn't accidentally "improve" something we considered and rejected.
-
-2. **Verify the task hasn't drifted.** Task files reference specific file paths and line numbers in the codebase. Code moves. The agent should:
-   - Confirm the cited files exist.
-   - Grep for the referenced symbols / line ranges before relying on the line numbers.
-   - If something has drifted significantly, report back rather than blindly editing.
-
-3. **Honor the `STATUS` block at the top of `--DRAFT.md` and `--GATED.md` files.** These contain an explicit prompt the agent must surface to the user before doing any work. The agent should ask, wait for the user's answer, and only then proceed.
-
-4. **Follow `WORKER-RULES.md` in this folder.** It is the single owner of the worker protocol: one branch per workstream and one commit per task, never pushing or touching protected branches, no credential reads, the inbox, attribution, and the exact report format. Base branch, PR target, commit format and verification steps come from this repo's CLAUDE.md; nothing here restates them.
-
-
-
-5. **Implement only this repo's bucket.** Do not change [`CONTRACT.md`](./CONTRACT.md). If it cannot work as written, stop the task and write the problem to [`NOTES.md`](./NOTES.md).
-
-6. **End by writing `reports/<repo>.md`** in the format WORKER-RULES.md gives. This file is the only channel back to the coordinating session.
-
----
-
-## File-name conventions
-
-| Suffix | Meaning | Agent behavior |
-|--------|---------|----------------|
-| (none) | Ready to execute | Read the file and proceed. |
-| `--DRAFT.md` | Needs design/product decision | Surface the STATUS-block prompt; wait for the user; only then proceed. |
-| `--GATED.md` | External blast radius | Surface the STATUS-block prompt; require explicit approval; only then proceed. |
-
-Inside every task file, the structure is consistent: Context, Scope, Files to touch, Interface contract, Acceptance criteria, Test plan, BC/Rollback, Out-of-scope, Notes.
-
----
-
-## Cross-references
-
-- Task index: [`README.md`](./README.md)
-- Design rationale: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
-<- Contract: [`CONTRACT.md`](./CONTRACT.md); Notes: [`NOTES.md`](./NOTES.md)>
 ```
 
 ## Phase 4 - Code-comment breadcrumbs (skill output)
@@ -411,7 +347,7 @@ The comment carries the reason itself. Code never points at `docs/` or `plans/` 
 ## Phase 5 - Finalize
 
 - Verify every internal cross-reference resolves (read the generated files and grep for relative paths that don't exist).
-- Verify every code path cited in task files exists: for each touched repo, one read-only lookup worker per repo checks the citations (this session does not open repo code).
+- Do not start workers to verify code citations here: every worker checks the citations of its own task before relying on them (`WORKER-RULES.md`) and writes drift to `NOTES.md`, so a separate round would repeat that work. Cite from what the planning lookups reported.
 - Print a tree of what was created (e.g. `find <folder>/<workstream> -type f | sort`).
 
 ## Rules

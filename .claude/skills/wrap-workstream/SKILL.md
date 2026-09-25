@@ -1,11 +1,11 @@
 ---
 name: wrap-workstream
-description: Close out a completed workstream that was landed with /land-plan. Verifies every task shipped, drafts a release note from the actual commits, then deletes the workstream folder (docs/<workstream>/ inside a repo, plans/<workstream>/ at the workspace root). Use AFTER the workstream's pull requests have merged and the work is fully released - this is the inverse of /land-plan.
+description: Close out a completed workstream (landed with /land-plan) or a shipped no-plan task. Verifies every task shipped, drafts a release note from the actual commits, writes the metrics row, removes the worktree, then deletes the plan folder. Use AFTER the pull requests have merged and the work is fully released - this is the inverse of /land-plan and of dispatch no-plan mode.
 ---
 
 # Wrap Workstream
 
-You are closing out a workstream that was previously landed with `/land-plan`. The work has shipped; the docs were scaffolding for the agents who executed each task and are now stale. Your job is to verify completion, summarize what shipped, and remove the scaffolding.
+You are closing out a folder under `plans/`: a workstream landed with `/land-plan` (has `README.md`), or a no-plan task started by `/dispatch` (has `TASK.md` with `Repo:` and `Branch:` lines and no README). The work has shipped; the folder was scaffolding for the agents who executed it and is now stale. Your job is to verify completion, summarize what shipped, and remove the scaffolding.
 
 ## When this skill fires
 
@@ -17,17 +17,19 @@ Do NOT use this skill while the workstream is still in flight. If any task is un
 
 ## Where it reads
 
-Workstreams live in `plans/<workstream>/` at the workspace root; each touched repo is a sibling folder, and `reports/<repo>.md` files are the primary completion signal.
+Folders live in `plans/<slug>/` at the workspace root; each touched repo is a sibling folder, and `reports/<repo>.md` files are the primary completion signal. Lookup folders (`TASK.md` starting with `# Lookup`) are not wrapped; the user deletes those when they like.
 
 ## Phase 1 - Identify and verify
 
 ### Q1. Which workstream to wrap?
 
-List the subdirectories of `plans/`. If exactly one looks like a `land-plan`-shaped workstream (has `README.md` + `ARCHITECTURE.md` + numbered task files), propose it. Otherwise ask via AskUserQuestion.
+List the subdirectories of `plans/`. Candidates are `land-plan`-shaped workstreams (`README.md` + `ARCHITECTURE.md` + numbered task files) and no-plan tasks (`TASK.md` with a `## Shipped` block). If exactly one candidate has a `## Shipped` block, propose it. Otherwise ask via AskUserQuestion.
 
 ### Q2. Verify every task landed
 
-For each `task-N-<slug>.md` (and `--DRAFT.md` / `--GATED.md` variants) in every repo bucket:
+**No-plan task.** Read `TASK.md` for the repo and branch and `reports/<repo>.md` for the commits. Every hash under `## Commits` must exist (`git -C <repo> cat-file -t <hash>`) and be reachable from the repo's PR target after the merge (`git -C <repo> branch -r --contains <hash>` names `origin/<PR target>`). A missing report, a hash that is not on the target, or no `## Shipped` block in `TASK.md` means it has not shipped: stop and say so. When it checks out, skip to Q3.
+
+**Planned workstream.** For each `task-N-<slug>.md` (and `--DRAFT.md` / `--GATED.md` variants) in every repo bucket:
 
 1. Read the file's "Files to touch" section.
 2. Run `git -C <repo> log --oneline --all -- <cited-file>` and confirm a recent commit touches it.
@@ -86,7 +88,7 @@ Only after explicit yes:
 
 `rm -rf <folder>/<workstream>/`. The folder is self-contained, so a single recursive remove retires the whole workstream. No need to touch anything else.
 
-Before asking, run `.claude/skills/wrap-workstream/metrics.sh --plan <abs plan>`; it appends the workstream's row to `METRICS.md` (repos, workers, harness and model, effort, dispatch-to-report time, relaunches, blocked events, review gaps, verification results, unplanned files, PRs and their merged, closed and review-round counts from GitHub) and prints it. The row is the only record that survives the delete. Then: `plans/` is not under version control; the delete is final. Say so in the confirmation line. Then retire the worker checkouts: for each repo listed in `.dispatch/workers.tsv` whose checkout is under `.worktrees/<workstream>/`, run `git -C <repo> worktree remove .worktrees/<workstream>/<repo>` (add `--force` only if the user confirms the leftover files are disposable), then `git -C <repo> worktree prune`. Leave the workstream branches in place; they are merged and the user may delete them on GitHub. Close the worker windows dispatch opened (`.claude/skills/dispatch/backend.sh close <id>`, ids in `workers.tsv`) if they are still open.
+Before asking, run `.claude/skills/wrap-workstream/metrics.sh --plan <abs plan>`; it appends the folder's row to `METRICS.md` (kind `plan` or `task`; the PR outcome is read from the `## Shipped` block in README.md or TASK.md) (repos, workers, harness and model, effort, dispatch-to-report time, relaunches, blocked events, review gaps, verification results, unplanned files, PRs and their merged, closed and review-round counts from GitHub) and prints it. The row is the only record that survives the delete. Then: `plans/` is not under version control; the delete is final. Say so in the confirmation line. Then retire the worker checkouts: for each repo listed in `.dispatch/workers.tsv` whose checkout is under `.worktrees/<slug>/` (a no-plan task has exactly one), run `git -C <repo> worktree remove .worktrees/<slug>/<repo>` (add `--force` only if the user confirms the leftover files are disposable), then `git -C <repo> worktree prune`. Leave the workstream branches in place; they are merged and the user may delete them on GitHub. Close the worker windows dispatch opened (`.claude/skills/dispatch/backend.sh close <id>`, ids in `workers.tsv`) if they are still open.
 
 ## Phase 4 - Report
 
@@ -108,7 +110,7 @@ Memory: <if anything from the workstream is worth a `feedback` or `project` memo
 
 ## Rules
 
-- **Never delete docs without Phase 1 verification.** Missing task: stop. Unclear task: ask.
+- **Never delete docs without Phase 1 verification.** Missing task: stop. Unclear task: ask. A no-plan task whose commits are not on the PR target: stop.
 - **Never delete data** from production stores. This skill operates on local files only.
 - **Don't fabricate the release note.** Pull from `git log`, not the task files. Task files describe what we *planned*; commits describe what we *did*.
 - **Don't reference Claude / AI / Anthropic** in any generated content (release note, commit message, anything else).

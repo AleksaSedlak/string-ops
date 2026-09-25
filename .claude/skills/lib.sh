@@ -11,15 +11,23 @@ ws_root() { printf '%s' "${WORKSPACE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/
 # file is fine.
 # Precedence: a value set in the environment (tests, one-off overrides) beats workflow.conf, which
 # beats these defaults.
-_CONF_KEYS="PROTECTED_BRANCHES WORKER_CAP LEARNINGS_CAP EFFORT_PLAN EFFORT_CODE EFFORT_LOOKUP WORKER_BACKEND TMUX_SESSION"
+_CONF_KEYS="PROTECTED_BRANCHES WORKER_CAP LEARNINGS_CAP MODEL_PLAN MODEL_CODE MODEL_LOOKUP MODEL_REVIEW EFFORT_PLAN EFFORT_CODE EFFORT_LOOKUP EFFORT_REVIEW WORKER_PERMISSION_MODE WORKER_BACKEND LOOKUP_BACKEND TMUX_SESSION"
 _ENV_SET=""; for _k in $_CONF_KEYS; do eval "[ -n \"\${$_k+x}\" ]" && _ENV_SET="$_ENV_SET $_k"; done
 : "${PROTECTED_BRANCHES:=main master staging develop}"
 : "${WORKER_CAP:=10}"
 : "${LEARNINGS_CAP:=15}"
+# "default" means the model Claude Code starts with on this machine (the latest unless the user pinned one)
+: "${MODEL_PLAN:=default}"
+: "${MODEL_CODE:=default}"
+: "${MODEL_LOOKUP:=default}"
+: "${MODEL_REVIEW:=default}"
 : "${EFFORT_PLAN:=xhigh}"
 : "${EFFORT_CODE:=high}"
 : "${EFFORT_LOOKUP:=medium}"
+: "${EFFORT_REVIEW:=high}"
+: "${WORKER_PERMISSION_MODE:=auto}"
 : "${WORKER_BACKEND:=auto}"
+: "${LOOKUP_BACKEND:=headless}"
 : "${TMUX_SESSION:=workers}"
 load_conf() {
   local f="$(ws_root)/workflow.conf" k v

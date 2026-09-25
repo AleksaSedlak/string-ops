@@ -15,7 +15,7 @@ Run from the workspace root. Output: line edits to `REPOS.md` for repos that mov
 .claude/skills/refresh-repos/check.sh --no-fetch # offline
 ```
 
-For each entry it compares the recorded hash with `origin/<PR target>` from the entry's `Branches` line (the default branch when no PR target is recorded), because that is where new work lands first and where workers branch from. It prints `unchanged`, or `moved` with the count of changed files and the subset that backs the entry: manifests, README and CLAUDE.md, controllers and routes, DTOs and types, schemas, notification and pubsub helpers, deploy config. It also lists folders without an entry and entries without a folder.
+For each entry it compares the recorded hash with `origin/<PR target>` from the entry's `Branches` line (the default branch when no PR target is recorded), because that is where new work lands first and where workers branch from. It prints `unchanged`, or `moved` with the count of changed files and the subset that backs the entry: manifests, README and CLAUDE.md, entry points, routes and handlers, types and schemas, event and topic helpers, CI and deploy config, for any stack. It also lists folders without an entry and entries without a folder.
 
 Show the user the summary before doing anything else: which repos moved, how many backing files changed in each, and any registry gaps.
 

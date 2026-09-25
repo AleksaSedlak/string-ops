@@ -40,19 +40,8 @@ report_is_fresh() { # $1 report path, $2 start stamp
 }
 pane_tail() { be_read "$1" "$2" 30 | grep -E -v '^\s*$' | tail -6 | tr '\n' ' ' | cut -c1-300; }
 
-# live rows: plan, repo, name, id, pane, stamp (latest row per worker name)
-rows="$(be_rows "$PLANS")"
-live=""
-while IFS=$'\t' read -r plan repo name id pane stamp; do
-  [ -n "$name" ] || continue
-  st="$(be_status "$name" "$pane" "$PLANS/$plan/.dispatch/state/$repo")"
-  case "$st" in
-    working|blocked) ;;
-    *) report_is_fresh "$PLANS/$plan/reports/$repo.md" "$stamp" && continue;;
-  esac
-  live="$live$plan	$repo	$name	$id	$pane	$stamp
-"
-done <<< "$rows"
+# live rows: plan, repo, name, id, pane, stamp (latest row per worker name, minus settled ones; see backend.sh)
+live="$(be_live_rows "$PLANS")"
 [ -n "$live" ] || exit 0
 
 # poll until the first one settles

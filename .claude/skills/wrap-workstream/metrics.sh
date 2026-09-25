@@ -65,7 +65,11 @@ if [ -f "$PLAN/README.md" ]; then
     verify="$(printf '%s\n' "$integ" | grep -oE 'Verification re-run: .*' | head -1 | sed 's/Verification re-run: //' | grep -oE 'PASS|FAIL|not requested' | sort | uniq -c | awk '{printf "%s %s ", $1, $2}' | sed 's/ $//')"; [ -n "$verify" ] || verify="-"
     unplanned="$(printf '%s\n' "$integ" | grep -oE 'Scope: .*' | head -1 | grep -oE '[0-9]+ unplanned' | awk '{s+=$1} END {print s+0}')"
   fi
-  urls="$(sed -n '/^## Shipped/,$p' "$PLAN/README.md" | grep -oE 'https://github.com/[^ )]+/pull/[0-9]+' | sort -u)"
+fi
+# the shipped block lives in README.md for a planned workstream and in TASK.md for a no-plan task
+shipfile=""; [ "$kind" = plan ] && shipfile="$PLAN/README.md"; [ "$kind" = task ] && shipfile="$PLAN/TASK.md"
+if [ -n "$shipfile" ]; then
+  urls="$(sed -n '/^## Shipped/,$p' "$shipfile" | grep -oE 'https://github.com/[^ )]+/pull/[0-9]+' | sort -u)"
   prs="$(printf '%s\n' "$urls" | grep -c .)"
   if [ "$prs" -gt 0 ] && command -v gh >/dev/null; then
     m=0; c=0; r=0

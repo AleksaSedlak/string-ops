@@ -19,6 +19,9 @@
 !/docs/
 !/templates/
 !/tests/
+# The coordinator's CLAUDE.md is framework, not instance data. Many machines ignore CLAUDE.md and
+# .claude/ globally; this repo's own rules win over that, so both stay tracked in every clone.
+!/CLAUDE.md
 
 # --- Local noise ------------------------------------------------------------------------------
 .DS_Store

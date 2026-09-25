@@ -25,12 +25,12 @@ For each shortlisted repo, and for any repo the request names outright, read its
 - If the change alters something in `Exposes`, every repo in `Consumed by` is a candidate consumer.
 - If the change needs something from `Consumes`, the repo that `Owns` it is a candidate owner.
 - Every repo on a `Linked` line is a candidate too: an earlier worker found it tied to this one through something the code does not show as an import or call (a payload shape, a topic consumed by name).
-- A new field or collection always adds nest-db-schema and the repos that pin it.
-- A notification change adds the function that owns the topic and the publishers listed on it.
+- A schema or shared-package change adds the repo that owns the package and every repo that pins it (their `Consumes` lines name it).
+- An event or topic change adds the repo that owns the topic and every publisher and subscriber listed on it.
 
 ## 4. Confirm inside the repos
 
-Open the candidate repos to check the match with evidence, read-only, using Bash grep and `sed -n` rather than the Read tool: reading a file with the Read tool pulls that repo's CLAUDE.md and rules into this session, which is meant to stay clean. If confirmation needs more than a handful of greps, hand the check to one read-only lookup worker per repo (`/dispatch` lookup mode) and wait for the reports instead. Look at the files the registry cites: controllers and route files for endpoints, `types.ts` or DTOs for payloads, the notification service or pubsub helper for topic names, the package manifest for pinned versions. Grep for the concrete nouns in the request (a field name, a route, a topic, a screen). When the owner already has a similar concept (an existing flag, DTO field or action string), trace that name through the owner and each consumer; the trace is what proves who is touched. Use a subagent only when the check spans a large monorepo and the request is vague.
+This session never opens repo code. Confirm inside the candidates through one read-only lookup worker per repo (`/dispatch` lookup mode; they run headless and in parallel, so this costs about one worker's time). Ask each worker for evidence, not opinion: the files the registry cites (route or controller files for endpoints, type or DTO files for payloads, the event helper for topic names, the manifest for pinned versions), a grep for the concrete nouns in the request (a field name, a route, a topic, a screen), and, when the owner already has a similar concept (an existing flag, field or action string), a trace of that name through the owner and into each consumer. The trace is what proves who is touched. When the registry alone answers the question with a cited file, say so and skip the workers.
 
 Never read env files, `.npmrc`, `.secrets/` or key files. If a fact lives only there, say so.
 
@@ -38,10 +38,10 @@ Drop a candidate when the evidence says the request does not touch it. Add a rep
 
 ## 5. Decide the contract owner
 
-The contract owner is the repo whose endpoints, payloads or event shapes the others will code against. Usually the backend or the function that owns the topic; for schema changes it is nest-db-schema and the wave order starts there. Note anything that changes the wave shape:
+The contract owner is the repo whose endpoints, payloads or event shapes the others will code against. Usually the backend or the service that owns the topic; for schema changes it is the repo that owns the schema package, and the wave order starts there. Note anything that changes the wave shape:
 
 - A repo marked `Workflow: own` is never dispatched a worker; the plan will hand its part to that repo's own flow as a human-gated wave.
-- A shared package release (nest-db-schema) is a wave 0 with a human gate; consumers cannot install what is not published.
+- A shared package release is a wave 0 with a human gate; consumers cannot install what is not published.
 - A consumer that generates types from a running producer (a client app from an API it calls) needs a between-waves step.
 - Anything that must happen "once" or be remembered across runs needs persisted state; say where it would live and, if that is a schema change, add the schema repo as wave 0. If the choice is not obvious, list it as an open question.
 

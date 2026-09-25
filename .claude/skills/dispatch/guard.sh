@@ -44,6 +44,9 @@ if ! printf '%s' "$cmd" | grep -Eq '[<>]|\$\(|`' \
     seg="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/^([A-Za-z_][A-Za-z0-9_]*=[^ ]*( +|$))*//')"
     [ -z "$seg" ] && continue
     if ! printf '%s' "$seg" | grep -Eq '^(cat|head|tail|less|grep|rg|ls|find|wc|echo|printf|sort|uniq|tr|cut|jq|diff|stat|file|basename|dirname|pwd|which|sed -n|git (show|log|diff|status|branch|ls-files|ls-tree|rev-parse|cat-file|rev-list|describe|remote -v|blame|shortlog)|(node|python3?|go|cargo|rustc|ruby|java|dotnet|php|mvn|gradle) (--version|version|-v|-V)|(npm|pnpm|yarn|pip3?|cargo|go|bundle|composer) (ls|list|view|tree|show|info|--version))( |$)'; then ok=0; break; fi
+    # a read-only utility with an argument that writes or deletes is not read-only: find -delete/-exec,
+    # sort -o, sed -i or a w command, git branch -D/-m (the block list above catches the other git forms)
+    if printf '%s' "$seg" | grep -Eq '^find .*(-delete|-exec|-execdir|-ok|-okdir|-fprint|-fprint0|-fprintf|-fls)( |$)|^sort .*(-o( |$)|--output)|^sed -n .*(-i|--in-place|(^|[0-9$/,;{[:space:]"'"'"'])w[[:space:]])|^git branch .*(-[dDmM]|--delete|--move)( |$)'; then ok=0; break; fi
   done < <(printf '%s\n' "$cmd" | tr '\n' ';' | sed -E 's/&&|\|\||\|/;/g' | tr ';' '\n'; echo)
   if [ "$ok" = 1 ]; then
     printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":"read-only command allowed by the workstream guard"}}'

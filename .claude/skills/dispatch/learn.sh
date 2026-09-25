@@ -16,6 +16,11 @@ WS="${WORKSPACE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 slug="$(basename "$PLAN")"; today="$(date +%F)"; added=0; promoted=0; dropped=0
 mkdir -p "$WS/learnings"
 
+# keep CLAUDE.local.md out of every commit in this repo and its worktrees, whatever the machine's global
+# gitignore says: .git/info/exclude in the common git dir applies to all worktrees and is never pushed
+exclude_local() { local gd ex; gd="$(git -C "$1" rev-parse --git-common-dir 2>/dev/null)" || return 0
+  case "$gd" in /*) ;; *) gd="$1/$gd";; esac; ex="$gd/info/exclude"; mkdir -p "$gd/info"
+  grep -qx 'CLAUDE.local.md' "$ex" 2>/dev/null || printf 'CLAUDE.local.md\n' >> "$ex"; }
 # remove one pending bullet (matched on its text, ignoring the date tag) from learnings/<repo>.md
 drop_pending() { local file="$1" text="$2" tmp; tmp="$(mktemp)"; grep -vF -- "- $text (" "$file" > "$tmp" || true; mv "$tmp" "$file"; }
 
@@ -37,12 +42,15 @@ for rep in "$PLAN"/reports/*.md; do
         if git -C "$WS/$repo" ls-files --error-unmatch CLAUDE.local.md >/dev/null 2>&1; then
           echo "refusing to write $repo/CLAUDE.local.md: git tracks it, learnings must never be pushed" >&2; continue
         fi
-        [ -f "$local_md" ] || printf '# Local notes for %s\n\nVerified gotchas from workspace workers. Never committed (globally gitignored).\n\n## Verified learnings\n' "$repo" > "$local_md"
+        if [ ! -f "$local_md" ]; then
+          printf '# Local notes for %s\n\nVerified gotchas from workspace workers. Never committed (excluded through .git/info/exclude).\n\n## Verified learnings\n' "$repo" > "$local_md"
+          exclude_local "$WS/$repo"
+        fi
         grep -q '^## Verified learnings' "$local_md" || printf '\n## Verified learnings\n' >> "$local_md"
         if ! grep -qF -- "- $text" "$local_md"; then
           # the user's cap (2026-09-21): at most 15 verified bullets per repo, so the file stays a list of
           # instructions and never grows into an overview; the oldest bullet makes room
-          n="$(awk '/^## Verified learnings/{f=1;next} /^## /{f=0} f && /^- /' "$local_md" | grep -c .)"
+          n="$(awk '/^## Verified learnings/{f=1;next} /^## /{f=0} f && /^- /' "$local_md" | grep -c . || true)"  # grep -c exits 1 on zero
           if [ "$n" -ge "$LEARNINGS_CAP" ]; then
             oldest="$(awk '/^## Verified learnings/{f=1;next} /^## /{f=0} f && /^- /{print; exit}' "$local_md")"
             tmp="$(mktemp)"; awk -v o="$oldest" '!d && $0==o {d=1; next} {print}' "$local_md" > "$tmp" && mv "$tmp" "$local_md"

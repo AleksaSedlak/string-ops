@@ -34,13 +34,13 @@ else "$WS/.claude/skills/wrap-workstream/metrics.sh" --plan "$PLAN" && { mkdir -
 echo "--- workspaces"
 tsv="$PLAN/.dispatch/workers.tsv"
 if [ -f "$tsv" ] && [ "$(be_name)" != none ]; then
-  awk -F'\t' '{print $2 "\t" $3 "\t" $5 "\t" $6}' "$tsv" | sort -u -k3,3 | while IFS=$'\t' read -r repo name wsid pane; do
+  awk -F'\t' '{print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6}' "$tsv" | sort -u -k4,4 | while IFS=$'\t' read -r repo name runner wsid pane; do
     [ -n "$wsid" ] || continue
     st="$(be_status "$name" "$pane" "$PLAN/.dispatch/state/$repo")"
     case "$st" in
       working|blocked) echo "kept $wsid: $name is $st (steer it or wait, then re-run)";;
-      gone) echo "window $wsid already closed";;
-      *) be_close "$wsid" && echo "closed $(be_name) window $wsid ($name)" || echo "window $wsid already closed";;
+      gone) echo "$runner worker $name already closed";;
+      *) be_close "$wsid" && echo "closed $runner worker $name" || echo "$runner worker $name already closed";;
     esac
   done
 else echo "no worker windows recorded"; fi

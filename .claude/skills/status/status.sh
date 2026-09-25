@@ -14,7 +14,7 @@ while IFS=$'\t' read -r plan repo name id pane stamp; do
   [ "$st" = gone ] && continue
   agents="$agents$name	$st
 "
-done <<< "$(be_rows "$PLANS")"
+done <<< "$(be_live_rows "$PLANS")"
 finished=()
 for P in "$PLANS"/*/; do
   P="${P%/}"; slug="$(basename "$P")"
@@ -23,6 +23,7 @@ for P in "$PLANS"/*/; do
   elif [ -f "$P/TASK.md" ]; then kind=task
   else kind=unknown; fi
   status=""; stage=""
+  if [ "$kind" = task ]; then grep -q '^## Shipped' "$P/TASK.md" && stage="shipped"; fi
   if [ "$kind" = plan ]; then
     status="$(grep -m1 -E '^> \*\*Status:\*\*' "$P/README.md" | sed -E 's/^> \*\*Status:\*\* //; s/\.$//' | cut -c1-60)"
     stage="landed"; grep -q '^## Dispatch' "$P/README.md" && stage="dispatched"
@@ -51,13 +52,15 @@ for P in "$PLANS"/*/; do
   fi
   echo "## $slug ($kind)"
   [ -n "$status" ] && echo "  status: $status | stage: $stage"
+  [ "$kind" = task ] && [ -n "$stage" ] && echo "  stage: $stage"
   echo "  repos: ${repos:-none}"
   echo "  reports: $nrep/$ntot${missing:+ (missing:$missing)}"
   [ -n "$workers" ] && echo "  workers:$workers"
   [ "$notes" -gt 0 ] && echo "  NOTES entries: $notes (unresolved until the user says otherwise)"
   [ "$inbox" -gt 0 ] && echo "  inbox pending: $inbox"
-  if [ "$kind" = plan ]; then
-    prs="$(sed -n '/^## Shipped/,$p' "$P/README.md" | grep -oE 'https://github.com/[^ )]+' | tr '\n' ' ')"
+  case "$kind" in plan) shipfile="$P/README.md";; task) shipfile="$P/TASK.md";; *) shipfile="";; esac
+  if [ -n "$shipfile" ]; then
+    prs="$(sed -n '/^## Shipped/,$p' "$shipfile" | grep -oE 'https://github.com/[^ )]+' | tr '\n' ' ')"
     [ -n "$prs" ] && echo "  PRs: $prs"
   fi
 done

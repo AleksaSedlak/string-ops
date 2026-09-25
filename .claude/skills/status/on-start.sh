@@ -6,7 +6,7 @@
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 out="$("$D/status.sh" 2>/dev/null)"
 open="$(printf '%s\n' "$out" | grep -cE '^## [^ ]+ \((plan|lookup|task|unknown)\)')"
-agents="$(printf '%s\n' "$out" | sed -n '/^## live herdr agents/,$p' | grep -vE '^## |^  none$|^[[:space:]]*$' | grep -c .)"
+agents="$(printf '%s\n' "$out" | sed -n '/^## live workers/,$p' | grep -vE '^## |^  none$|^[[:space:]]*$' | grep -c .)"
 trees="$(printf '%s\n' "$out" | sed -n '/^## worktrees/,/^## live/p' | grep -vE '^## |^[[:space:]]*$' | grep -c .)"
 if [ "$open" -gt 0 ] || [ "$agents" -gt 0 ] || [ "$trees" -gt 0 ]; then
   echo "Workspace state at session start (from plans/ and herdr; restart changes nothing, continue from here):"

@@ -6,8 +6,8 @@
 #
 #   link-repos.sh --plan <abs path to plans/<slug>> [--dry-run]
 #
-# For every reports/<repo>.md: find whole-word mentions of other registry repos (folder name, the name
-# without a `function-` prefix, and the GitHub remote's short name). A mention counts only when the
+# For every reports/<repo>.md: find whole-word mentions of other registry repos (folder name and the
+# GitHub remote's short name). A mention counts only when the
 # mentioning repo's entry does not already name that repo anywhere (Consumes, Exposes, Consumed by,
 # Linked). Each new tie is appended to both entries as
 #   - Linked: <other repo> (<the report line that mentioned it, shortened>; noted <date> from <slug>)
@@ -24,8 +24,8 @@ slug="$(basename "$PLAN")"; today="$(date +%F)"
 
 # name<TAB>alias, one line per alias
 aliases="$(awk '
-  /^## /{name=substr($0,4); print name "\t" name; s=name; sub(/^function-/,"",s); if (s!=name) print name "\t" s}
-  /^- Path:.*Remote: `/{m=$0; sub(/.*Remote: `/,"",m); sub(/`.*/,"",m); sub(/.*\//,"",m); print name "\t" m; t=m; sub(/^function-/,"",t); if (t!=m) print name "\t" t}
+  /^## /{name=substr($0,4); print name "\t" name}
+  /^- Path:.*Remote: `/{m=$0; sub(/.*Remote: `/,"",m); sub(/`.*/,"",m); sub(/.*\//,"",m); print name "\t" m}
 ' "$R" | sort -u)"
 entry() { awk -v r="## $1" '$0==r{f=1;next} /^## /{f=0} f' "$R"; }
 has_entry() { grep -qx "## $1" "$R"; }
