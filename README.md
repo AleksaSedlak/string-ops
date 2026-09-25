@@ -132,6 +132,10 @@ tests/             check.sh (fast, no windows) and live.sh (one real worker)
 
 </details>
 
+## Contributing
+
+Fork, branch, pull request. Run `tests/check.sh` before opening one. The maintainer reviews every pull request and merges to `main`; nothing lands any other way. Details in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 MIT.

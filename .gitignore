@@ -16,6 +16,7 @@
 # own folders are listed back in below.
 /*/
 !/.claude/
+!/.github/
 !/docs/
 !/templates/
 !/tests/
