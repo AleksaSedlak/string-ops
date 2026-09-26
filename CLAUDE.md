@@ -23,7 +23,7 @@ Decide the mode from what the user says; they do not need to name a command:
 ## The change flow, with three gates
 
 1. Route (`/route`): match the request against `ROUTING.md` and `REPOS.md`, confirm inside the candidate repos through lookup workers, name the repos touched, the contract owner and why. Gate 1: wait for the user.
-2. Plan: no edits. Planning runs on model `MODEL_PLAN` at effort `EFFORT_PLAN` from `workflow.conf`; ask the user to switch with `/model` and `/effort` before this step if the session is not there (`default` means the model this session started with), and back afterwards. Gate 2: wait for the user, then `/land-plan` writes `plans/<workstream>/`.
+2. Plan: no edits. Planning runs on model `MODEL_PLAN` at effort `EFFORT_PLAN` from `workflow.conf`; ask the user to switch with `/model` and `/effort` before this step if the session is not there (`default` means the model this session started with), and back afterwards. Gate 2: wait for the user, then `/land-plan` writes `plans/<workstream>/` and asks `Approve plan <workstream>?`; the user's "Approve" writes the approval line through a hook.
 3. Dispatch (`/dispatch`): one worker per repo, a wave at a time, all repos of a wave started together; contract owners first, consumers after wave 1 has real endpoints and types. When a wave's reports are in, its reviewers start at once and run while the next wave codes. Repos marked `Workflow: own` in `REPOS.md` are human-gated steps, not workers. Workers commit on the workstream branch and end by writing `plans/<workstream>/reports/<repo>.md`. Files are the only channel.
 4. Integrate (`/integrate`): read `NOTES.md` and the reports, run the mechanical checks per branch, collect the reviewers' verdicts (start any that are missing), give one summary. Gate 3: wait for the user.
 5. Ship (`/ship-workstream`): push the workstream branches and open one pull request per repo against its PR target, in wave order. Nothing else ever pushes.
@@ -33,6 +33,7 @@ If the session-start note says the registry check is overdue, say so before anyt
 
 ## Rules for every stage
 
+- The user may be on the Claude app, not at this terminal. Whenever the flow waits on them (a gate, a blocked worker's question, a decision), ask with AskUserQuestion: short options, free text through its Other option, and it reaches the phone as a push. Never pass its `answers` field; answers come from the user. When a wake brings news but no decision (a wave complete, every report in, a review with gaps, a lookup answered), send one line with PushNotification. Discussion while planning stays plain chat.
 - Protected branches (`PROTECTED_BRANCHES` in `workflow.conf`) are never committed to or pushed to. All work happens on a branch named for the workstream and reaches the PR target only through a pull request.
 - Skills and plan templates state no repo rules. Commit, verification and PR-target details come from each repo's CLAUDE.md and `REPOS.md`.
 - Credentials on disk are never read. Env files, `.npmrc`, `.secrets/` and key files are off limits in every repo; ask instead.

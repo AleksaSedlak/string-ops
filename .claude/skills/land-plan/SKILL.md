@@ -286,7 +286,7 @@ Workers: if the contract cannot be implemented as written, or a task file has dr
 ```markdown
 # <Workstream Title>
 
-> **Status:** landed <date>, awaiting approval<, with N `--DRAFT` and M `--GATED` tasks if any>. (Dispatch refuses to start until this line reads `approved <date>`, written by the user.)
+> **Status:** landed <date>, awaiting approval<, with N `--DRAFT` and M `--GATED` tasks if any>. (Dispatch refuses to start until this line reads `approved <date>`, written by the user or by the approval hook when the user answers `Approve`.)
 > **Scope:** <the list of repos, contract owner first>
 > **Backwards compatibility:** <the Q5 answer, one line>
 > **First time picking this up?** Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) before touching any task (captures the *why* behind the design), and `WORKER-RULES.md` for the worker protocol.
@@ -390,6 +390,8 @@ Open threads (will need follow-up):
 - <thread 2>
 
 Next steps:
-1. Change the README status line to `approved <date>`, then run /dispatch <workstream>.
+1. Approve: answer the approval question, or change the README status line to `approved <date>`. Then /dispatch <workstream>.
 2. One branch named for the workstream, one commit per task.
 ```
+
+At the workspace root (`plans/<workstream>/`), end with the approval question, so the user can approve from the Claude app as well as the terminal. Call AskUserQuestion with exactly one question, `Approve plan <workstream>?`, header `Gate 2`, and the options `Approve` (description: starts wave 1) and `Not yet`. Put a phone-sized summary in the `Approve` option's preview: the repos in wave order, the contract in two lines, the open threads. Never pass the `answers` field. The `approve.sh` hook next to this file writes the approval line only when the user picks `Approve`; if the tool result says it did, run /dispatch <workstream>. On `Not yet` or a typed answer, take it up in chat; never write the line yourself.

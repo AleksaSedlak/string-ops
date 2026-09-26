@@ -80,7 +80,7 @@ if [ "$CATCHUP" = 1 ]; then
   :  # the plan is already approved and dispatched; the branch exists
 elif [ "$NOPLAN" = 0 ]; then
   grep -Eq '^> \*\*Status:\*\* approved [0-9]{4}-[0-9]{2}-[0-9]{2}' "$PLAN/README.md" 2>/dev/null \
-    || fail "$PLAN/README.md has no line '> **Status:** approved <date>'; the user writes that line"
+    || fail "$PLAN/README.md has no line '> **Status:** approved <date>'; the user writes it, or answers Approve to 'Approve plan <workstream>?'"
   [ -d "$PLAN/$REPO" ] || fail "plan has no bucket folder $PLAN/$REPO"
 else
   [ -f "$PLAN/TASK.md" ] || fail "no-plan mode needs $PLAN/TASK.md"

@@ -62,7 +62,7 @@ Then `/land-plan` writes `plans/<workstream>/`:
 | `NOTES.md` | Empty at first; workers write contract problems here |
 | `<repo>/task-N-<slug>.md` | One folder per repo, numbered task files, each with `Files to touch` and `Acceptance criteria` |
 
-You approve by changing the README status line to `approved <date>`. Nothing starts before that.
+You approve by answering **Approve** to the question `Approve plan <workstream>?`, in the terminal or the Claude app, or by changing the README status line to `approved <date>` yourself. The answer is written into the README by a hook, never by the model: a hook on the question reads your answer and rewrites the status line, and a second hook refuses any question the model tries to pre-answer. Nothing starts before that line reads `approved`.
 
 ### 3. Dispatch
 
@@ -82,7 +82,7 @@ Waves go contract owners first, consumers once wave 1 has real endpoints and typ
 
 The coordinator ends its turn. A hook watches the live workers and wakes the session with one line when the first one settles: `done`, `blocked` or `stopped`, with repo and plan.
 
-- A **blocked** worker gets its answer through the inbox.
+- A **blocked** worker gets its answer through the inbox. A question only you can answer is put to you with a multiple-choice question, which the Claude app delivers as a notification; news that needs no answer (a wave done, a review with gaps) comes as a one-line notification.
 - A **stopped** worker goes up the recovery ladder: look at its pane, steer, ask you, interrupt and redirect, relaunch, and as a last resort fail it with a stub report.
 
 ### 5. Integrate
@@ -180,6 +180,8 @@ Every window the framework opens shows the same status line: model, reasoning ef
 
 Two hooks run when a session opens at the root. One prints the status digest (open plans, missing reports, live workers, worktrees) or one quiet line. The other says when the registry check is overdue. A restarted coordinator continues from that digest.
 
+The coordinator reaches the Claude app through Claude Code's own Remote Control (start with `claude --remote-control`, or type `/remote-control` in a running session). Workers start with Remote Control off whatever the user's own setting, so only the coordinator shows up in the Claude app. The workspace settings also turn on Claude Code's pushes for questions and permission prompts (`inputNeededNotifEnabled`) and for notifications the model sends (`agentPushNotifEnabled`).
+
 ## Tests
 
 | Script | What it does |
@@ -216,6 +218,7 @@ All under `.claude/skills/`. Each has a header comment that says what it does; r
 | `ship-workstream/preflight.sh` | The ship checks above, one PASS or FAIL line each |
 | `wrap-workstream/metrics.sh` | Writes the metrics row and the change notes |
 | `status/status.sh`, `status/on-start.sh` | The status digest and the session-start hook |
+| `land-plan/approve.sh` | Hooks on the approval question: refuses pre-filled answers, writes the approval line from the user's answer |
 | `refresh-repos/check.sh`, `refresh-repos/remind.sh` | Finds registry entries that fell behind; the overdue reminder |
 | `start/start.sh` | Tool check, instance files, repo listing, first-repo scaffold |
 | `upgrade/upgrade.sh` | Pulls a newer framework version without touching instance files |

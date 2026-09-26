@@ -1,4 +1,5 @@
 {
+  "remoteControlAtStartup": false,
   "permissions": {
     "allow": [
       "Bash(git:*)",
