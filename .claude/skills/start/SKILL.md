@@ -36,7 +36,7 @@ When every repo has an entry, write the first `ROUTING.md` rows: one row per are
 
 ## 4. Finish
 
-Print what exists now (registry entries, routing rows, `workflow.conf` values) in a short block, then the sentence: "Now just talk. Ask a question, or describe a change."
+Print what exists now (registry entries, routing rows, `workflow.conf` values) in a short block. If `echo "$CLAUDE_CODE_BRIDGE_SESSION_ID"` prints nothing, this session is not connected to the Claude app; add one line: to drive the workspace from your phone, start with `claude --remote-control` or type `/remote-control` now. Then the sentence: "Now just talk. Ask a question, or describe a change."
 
 ## Rules
 

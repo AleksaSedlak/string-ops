@@ -135,6 +135,17 @@ printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "2026-09-24T10:00:00" 
 row="$(PATH=/nonexistent:$PATH "$S/wrap-workstream/metrics.sh" --plan "$T" 2>/dev/null)"; printf '%s' "$row" | grep -q '| fix-timeout | task |' && printf '%s' "$row" | grep -qE '\| 1 \| [^|]* \| [^|]* \| [^|]* \|$' && pass "metrics row for a shipped no-plan task counts its PR from TASK.md" || bad "metrics no-plan PRs: $row"
 "$S/status/status.sh" --all 2>/dev/null | sed -n '/^## fix-timeout/,/^## /p' | grep -q 'PRs: https://github.com/example/alpha/pull/7' && pass "status shows a no-plan task's PR from its TASK.md" || bad "status no-plan PRs"
 
+# the Claude app: approval from an answer, workers off the app
+A="$WS/plans/phone-demo"; mkdir -p "$A"; printf '# Phone demo\n\n> **Status:** landed 2026-09-25, awaiting approval. (Dispatch refuses to start until this line reads `approved <date>`.)\n> **Scope:** alpha\n' > "$A/README.md"
+ask() { jq -n --arg q "$1" --arg a "$2" '{hook_event_name: "PostToolUse", tool_name: "AskUserQuestion", tool_input: {questions: [{question: $q}]}, tool_response: {answers: {($q): $a}}}' | "$S/land-plan/approve.sh"; }
+jq -n '{tool_input: {questions: [{question: "Approve plan phone-demo?"}], answers: {"Approve plan phone-demo?": "Approve"}}}' | "$S/land-plan/approve.sh" --guard >/dev/null 2>&1; [ $? = 2 ] && pass "approve guard refuses a pre-answered question" || bad "approve guard pre-answered"
+jq -n '{tool_input: {questions: [{question: "Approve plan phone-demo?"}]}}' | "$S/land-plan/approve.sh" --guard >/dev/null 2>&1 && pass "approve guard lets a plain question through" || bad "approve guard plain"
+ask "Approve plan phone-demo?" "Not yet" >/dev/null; grep -q 'landed 2026-09-25' "$A/README.md" && pass "Not yet leaves the plan unapproved" || bad "approve Not yet"
+ask "Approve plan missing-plan?" "Approve" >/dev/null; ask "Ship phone-demo?" "Approve" >/dev/null; grep -q 'landed 2026-09-25' "$A/README.md" && pass "other questions never approve" || bad "approve other questions"
+out="$(ask "Approve plan phone-demo?" "Approve")"; grep -Eq '^> \*\*Status:\*\* approved [0-9]{4}-[0-9]{2}-[0-9]{2}' "$A/README.md" && ! grep -q 'landed 2026-09-25' "$A/README.md" && printf '%s' "$out" | jq -e '.hookSpecificOutput.additionalContext | test("phone-demo")' >/dev/null 2>&1 && pass "Approve writes the approval line dispatch reads and tells the session" || bad "approve writes line"
+[ "$(grep -c 'Status:' "$A/README.md")" = 1 ] && grep -q '^> \*\*Scope:\*\* alpha' "$A/README.md" && pass "approval rewrites one line and keeps the rest" || bad "approve keeps README"
+jq -e '.remoteControlAtStartup == false' "$S/dispatch/worker-settings.json" >/dev/null 2>&1 && pass "workers start with Remote Control off" || bad "worker Remote Control"
+jq -e '.inputNeededNotifEnabled and .agentPushNotifEnabled and (.hooks.PreToolUse[] | select(.matcher == "AskUserQuestion")) and (.hooks.PostToolUse[] | select(.matcher == "AskUserQuestion"))' "$ROOT/.claude/settings.json" >/dev/null 2>&1 && pass "coordinator settings carry pushes and the app hooks" || bad "coordinator app settings"
 cd "$ROOT" || exit 1
 if [ "$KEEP" = 1 ]; then echo "fixture kept at $WS"; else rm -rf "$FIX"; fi
 [ "$fail" = 0 ] && echo "all checks passed" || echo "some checks failed"

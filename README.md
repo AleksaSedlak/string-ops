@@ -52,14 +52,14 @@ Either way, the registry is what the coordinator routes from. Two files hold it:
 ## The full flow, from your side
 
 1. **Route.** The coordinator names the repos it will touch and who owns the contract between them. You say yes.
-2. **Plan.** It asks a few grouped questions, proposes a plan, and writes it to `plans/<name>/`. You approve by editing one line in that folder's README to `approved <date>`.
+2. **Plan.** It asks a few grouped questions, proposes a plan, and writes it to `plans/<name>/`. You approve by answering **Approve** to its question, in the terminal or on your phone, or by editing one line in that folder's README to `approved <date>`.
 3. **Build.** One worker per repo, in waves: contract owners first, consumers once the endpoints exist. The moment a wave finishes, a fresh worker reviews it while the next wave codes.
 4. **Integrate.** You get one summary: what each repo did, what the reviewers found, what blocks. You say yes.
 5. **Ship.** Say *"ship &lt;name&gt;"*. Nothing is pushed on any other words. One pull request per repo, cross-linked, in merge order.
 6. **Wrap.** After the merges, say *"wrap &lt;name&gt;"*. Worktrees removed, folder deleted, one metrics row left behind.
 
 > [!NOTE]
-> Saying "approved" or "looks good" in chat never starts a build and never pushes. The approval is the edit in step 2; the push is the word "ship" in step 5. This is deliberate.
+> Saying "approved" or "looks good" in chat never starts a build and never pushes. The approval is your answer or your edit in step 2; the push is the word "ship" in step 5. This is deliberate.
 
 ## While it runs
 
@@ -67,6 +67,17 @@ Either way, the registry is what the coordinator routes from. Two files hold it:
 - **Stuck workers come to you.** The coordinator shows you the question and waits. Answer the coordinator, never a worker's window; your reply reaches the worker through its inbox.
 - **Ask "status" any time.** What is open, who is working, what is waiting on you.
 - **Closing the terminal loses nothing.** Everything lives in files. A new session picks up from disk.
+
+## From your phone
+
+Start the coordinator with `claude --remote-control` (or type `/remote-control` in a running session) and it shows up in the Claude app (iOS, Android) and at claude.ai/code under **Code**, while everything keeps running on your machine. Claude Code's **Enable Remote Control for all sessions** setting works too, but it puts every Claude session you run on your phone, not only this one. From there you talk to it exactly as at the terminal:
+
+- **Every question comes to your phone as a notification.** Gates, a stuck worker, a decision: each is asked as a question you answer with a tap or a few words.
+- **News comes as a notification too.** A wave finished, every report is in, a reviewer found a gap.
+- **Approving a plan is a tap.** Only your answer counts: the approval line is written by a hook from your answer, never by the assistant.
+- **Only the coordinator is on your phone.** Workers start with Remote Control off, even with that setting on, so you cannot answer one by mistake.
+
+Needs a Claude Pro or Max login (Remote Control does not work with an API key). The computer has to stay awake: Claude Code keeps it awake while it is working, but a sleeping computer cannot hear your phone, so leave it plugged in with the lid open, or run the workspace on a machine that is always on.
 
 ## What keeps it safe
 
@@ -85,11 +96,10 @@ Either way, the registry is what the coordinator routes from. Two files hold it:
 
 ## Today and next
 
-**Today** it runs on your desktop, macOS or Linux, where the worker windows live. When something refuses to run, the coordinator stops and says what was refused rather than working around it.
+**Today** it runs on your desktop, macOS or Linux, where the worker windows live, and you drive it from there or from the Claude app on your phone. When something refuses to run, the coordinator stops and says what was refused rather than working around it.
 
 **Next:**
 
-- **From your phone or the web.** Drive the coordinator from the Claude app, with the workers on a machine of yours.
 - **Any coding agent as a worker.** Today workers are Claude Code sessions. One script opens, prompts and reads a worker window, so other agents can run in the same windows under the same rules.
 
 ## If you want the wheel

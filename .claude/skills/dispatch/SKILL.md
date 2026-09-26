@@ -7,7 +7,7 @@ description: Start worker sessions for an approved workstream, in waves, or one 
 
 Run from the workspace root. Two modes:
 
-- **Plan mode**: `dispatch <workstream>`. Needs `plans/<workstream>/` written by `/land-plan` and a README whose status line reads `> **Status:** approved <date>`, written by the user. Starts one worker per repo bucket, in waves.
+- **Plan mode**: `dispatch <workstream>`. Needs `plans/<workstream>/` written by `/land-plan` and a README whose status line reads `> **Status:** approved <date>`, written by the user or by the approval hook when the user answers `Approve` to land-plan's question. Starts one worker per repo bucket, in waves.
 - **No-plan mode**: "no planning, do X in <repo>". Writes `plans/<slug>/TASK.md`, starts one worker, returns its report. No gates, no contract, no land-plan.
 - **Lookup mode**: any question that needs reading inside a repo ("how does X work", "what is the format of Y", "where is Z"). Writes `plans/<slug>/TASK.md`, starts one read-only worker per repo involved, returns the answers. The workspace session never reads repo code itself; this keeps it clean so several lookups and tasks can run at once. Read-only workers run headless by default (`LOOKUP_BACKEND` in `workflow.conf`): a background process with no window, so an answer costs the model's own time and nothing else. Pass `--window` to `start-worker.sh` when the user wants to watch one.
 
@@ -17,7 +17,7 @@ The mechanical parts live in this skill folder; read each header once and do not
 
 ## Refusals, before anything starts
 
-- Plan mode without the approval line: stop and say which line is missing. Do not write it yourself.
+- Plan mode without the approval line: stop and say which line is missing, then ask `Approve plan <workstream>?` as land-plan does. Do not write the line yourself.
 - A bucket for a repo whose `REPOS.md` entry says `Workflow: own`: do not start a worker. Tell the user that repo's part is handled through its own flow and list what the plan expects from it.
 - A bucket whose task is to publish a package or cut a release: do not start a worker unless the task is only a code change; the publish step is the user's.
 - Any `NOTES.md` entry left unresolved from an earlier wave: stop and show it.
@@ -38,7 +38,7 @@ The mechanical parts live in this skill folder; read each header once and do not
    - `done`: read the report. When every repo in the wave has one, the wave is complete. A `done` line for a `<workstream>-review-<repo>` folder is a reviewer finishing; note it in the README and keep waiting for the wave.
    - `blocked`: the line carries the last lines of the pane. If the pane is a question the task file or handoff already answers, answer it with `steer.sh` (see below). Otherwise show the user what the worker is asking and wait for their answer; never answer a permission prompt yourself.
    - `stopped`: the worker went idle without writing a report. Follow the recovery ladder below.
-   A worker that needs a person also fires a desktop notification (the Notification hook in `worker-settings.json`), so the user sees it even when this session is idle.
+   A worker that needs a person also fires a desktop notification (the Notification hook in `worker-settings.json`), so the user sees it even when this session is idle. The user may be on the Claude app instead: put a blocked worker's question to them with AskUserQuestion, and send one PushNotification line when a wave completes or a review reports gaps.
 5. A wave is complete when `reports/<repo>.md` exists for every repo in it. Check `NOTES.md` after every wave; an unresolved entry stops the next wave.
 6. Start the wave's reviews at once, before anything else, so they run while the next wave codes and a contract mistake in an owner is known before its consumers build on it:
 
@@ -134,5 +134,5 @@ Go one rung at a time and stop at the first that works. Record what you did in t
 ## Never
 
 - Never push, merge, tag or open a PR from this skill.
-- Never write the approval line, clean a dirty checkout, or answer a worker's permission prompt on the user's behalf.
+- Never write the approval line (only the user or the approval hook does), clean a dirty checkout, or answer a worker's permission prompt on the user's behalf.
 - Never start a second worker for a repo that already has a live worker of the same name; `status.sh` lists them.
