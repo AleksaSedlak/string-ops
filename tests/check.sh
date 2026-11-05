@@ -89,6 +89,16 @@ WORKER_BACKEND=tmux "$S/dispatch/start-worker.sh" --workspace "$WS" --plan "$P" 
 "$S/dispatch/start-worker.sh" --workspace "$WS" --plan "$P" --repo alpha --branch q-check --read-only --dry-run 2>/dev/null | grep -q 'permissions auto' && pass "workers start in auto permission mode by default" || bad "permission mode default"
 WORKER_PERMISSION_MODE=acceptEdits "$S/dispatch/start-worker.sh" --workspace "$WS" --plan "$P" --repo alpha --branch q-check --read-only --dry-run 2>/dev/null | grep -q 'permissions acceptEdits' && pass "WORKER_PERMISSION_MODE changes the mode" || bad "permission mode config"
 WORKER_PERMISSION_MODE=bypassPermissions "$S/dispatch/start-worker.sh" --workspace "$WS" --plan "$P" --repo alpha --branch q-check --read-only --dry-run 2>&1 | grep -q 'refused: WORKER_PERMISSION_MODE' && pass "start-worker refuses an unsafe permission mode" || bad "permission mode refusal"
+# a stand-in herdr: a worker name still held refuses the start before any window opens; a start that
+# fails after the window opened closes that window again
+mkdir -p "$FIX/bin" "$FIX/home"; P5="$WS/plans/q-stub"; mkdir -p "$P5/reports"; printf '# Lookup - stub\n\nRepos: alpha\n' > "$P5/TASK.md"
+printf '#!/usr/bin/env bash\necho "$*" >> "$STUB_LOG"\ncase "$1 $2" in\n  "agent get") [ -n "$STUB_TAKEN" ] && echo %s || echo %s;;\n  "workspace create") echo %s;;\n  "agent start") exit 1;;\nesac\nexit 0\n' \
+  "'{\"result\":{\"agent\":{\"workspace_id\":\"wT\",\"agent_status\":\"done\"}}}'" "'{\"error\":{\"code\":\"agent_not_found\"}}'" "'{\"result\":{\"workspace\":{\"workspace_id\":\"wF\"},\"root_pane\":{\"pane_id\":\"wF:p1\"}}}'" > "$FIX/bin/herdr"; chmod +x "$FIX/bin/herdr"
+: > "$FIX/herdr.log"; out="$(STUB_TAKEN=1 STUB_LOG="$FIX/herdr.log" HOME="$FIX/home" PATH="$FIX/bin:$PATH" WORKER_BACKEND=herdr "$S/dispatch/start-worker.sh" --workspace "$WS" --plan "$P5" --repo alpha --branch q-stub --read-only --window 2>&1)"
+printf '%s' "$out" | grep -q 'still held by herdr workspace wT' && ! grep -q 'workspace create' "$FIX/herdr.log" && pass "start-worker refuses a worker name another window still holds, before opening one" || bad "start-worker held name: $out"
+: > "$FIX/herdr.log"; out="$(STUB_LOG="$FIX/herdr.log" HOME="$FIX/home" PATH="$FIX/bin:$PATH" WORKER_BACKEND=herdr "$S/dispatch/start-worker.sh" --workspace "$WS" --plan "$P5" --repo alpha --branch q-stub --read-only --window 2>&1)"
+printf '%s' "$out" | grep -q 'did not start; closed its window wF' && grep -q '^workspace close wF' "$FIX/herdr.log" && pass "start-worker closes the window of a worker that failed to start" || bad "start-worker failed start cleanup: $out"
+rm -rf "$P5"
 G="$WS/plans/greeting"
 "$S/dispatch/start-wave.sh" --workspace "$WS" --plan "$G" --branch greeting --dry-run alpha beta 2>/dev/null > "$FIX/wave.out"; grep -q '^=== alpha (exit 0)' "$FIX/wave.out" && grep -q '^=== beta (exit 0)' "$FIX/wave.out" && grep -q 'would start worker greeting-alpha' "$FIX/wave.out" && pass "start-wave starts every repo of a wave and reports in order" || bad "start-wave"
 "$S/dispatch/start-review.sh" --workspace "$WS" --plan "$G" --repo alpha --dry-run 2>&1 | grep -q 'no report yet' && pass "start-review refuses without the worker's report" || bad "start-review without report"

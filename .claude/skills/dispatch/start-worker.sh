@@ -201,6 +201,9 @@ if [ "$DRY" = 1 ]; then
   exit 0
 fi
 
+held="$(be_holder "$NAME")"
+[ -z "$held" ] || fail "worker name $NAME is still held by $(be_name) workspace $held; steer that worker (steer.sh) or close it (backend.sh close $held) first"
+
 # Pre-trust the repo so the worker does not stall on Claude Code's trust dialog. Claude Code keys
 # trust on the main repo path (a worktree resolves to it), so both paths are marked. This writes the
 # same flag the dialog writes; every repo here is the user's own, so the answer is always yes. A lock
@@ -225,10 +228,11 @@ STATE="$PLAN/.dispatch/state/$REPO"; mkdir -p "$PLAN/.dispatch/state"; rm -f "$S
 envs=("WORKER_STATE_FILE=$STATE" "WORKER_REPORT_FILE=$PLAN/reports/$REPO.md"); [ "$CATCHUP" = 1 ] && envs+=("WORKSTREAM_ALLOW_MERGE=$TARGET")
 opened="$(BE_LAUNCH_DIR="$PLAN/.dispatch" be_open "$BRANCH/$REPO" "$WT" "${envs[@]}")" || fail "could not open a worker window ($(be_name))"
 wsid="${opened%%	*}"; pane="${opened##*	}"
-[ -n "$pane" ] && [ "$pane" != null ] || fail "the $(be_name) backend returned no window: $opened"
+[ -n "$pane" ] && [ "$pane" != null ] || { [ -n "$wsid" ] && [ "$wsid" != null ] && be_close "$wsid"; fail "the $(be_name) backend returned no window: $opened"; }
 # record before starting, so a failed or blocked start still leaves a trace for integrate and wrap
 printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$STAMP" "$REPO" "$NAME" "$(be_name)" "$wsid" "$pane" "$WT" "$EFFORT" claude "${MODEL:-default}" "$CUR" "$HEAD_SHA" >> "$PLAN/.dispatch/workers.tsv"
-BE_LAUNCH_DIR="$PLAN/.dispatch" be_start "$NAME" "$pane" "$PROMPT" "${dirs[@]}" --permission-mode "$WORKER_PERMISSION_MODE" --effort "$EFFORT" ${MODEL:+--model "$MODEL"} --settings "$SETTINGS" || fail "the worker did not start"
+BE_LAUNCH_DIR="$PLAN/.dispatch" be_start "$NAME" "$pane" "$PROMPT" "${dirs[@]}" --permission-mode "$WORKER_PERMISSION_MODE" --effort "$EFFORT" ${MODEL:+--model "$MODEL"} --settings "$SETTINGS" \
+  || { be_close "$wsid"; fail "the worker did not start; closed its window $wsid"; }
 if [ "$(be_name)" = headless ]; then echo "started $NAME (headless, model ${MODEL:-default}, effort $EFFORT) in $WT; run dir ${pane#headless:}"
 else echo "started $NAME ($(be_name) $wsid, pane $pane, model ${MODEL:-default}, effort $EFFORT) in $WT"; fi
 echo "read:   .claude/skills/dispatch/backend.sh read $NAME $pane 120"

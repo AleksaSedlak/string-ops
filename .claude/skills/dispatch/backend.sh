@@ -8,7 +8,7 @@
 #
 # Sourced:   . backend.sh; be_open ...; be_status ...
 # Command:   backend.sh name | status <name> <pane> <state-file> | read <name> <pane> [lines]
-#                     | prompt <name> <pane> "<text>" | keys <name> <pane> esc | close <id> | attach
+#                     | prompt <name> <pane> "<text>" | keys <name> <pane> esc | close <id> | holder <name> | attach
 #
 # WORKER_BACKEND in workflow.conf: herdr, tmux, or auto (herdr when installed, else tmux). start-worker
 # sets it to headless for a read-only worker when LOOKUP_BACKEND says so.
@@ -140,6 +140,14 @@ be_keys() {
   esac
 }
 
+# be_holder <name>   the window that still holds a worker name, or nothing. herdr refuses a second agent
+# under a name it knows, so a finished worker whose workspace is still open blocks a relaunch.
+be_holder() {
+  case "$(be_name)" in
+    herdr) herdr agent get "$1" 2>/dev/null | jq -r '.result.agent.workspace_id // empty' 2>/dev/null;;
+  esac
+}
+
 # be_close <id>   close the worker's window
 be_close() {
   case "$(_be_of "$1")" in
@@ -208,7 +216,8 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     prompt) be_prompt "$@";;
     keys) be_keys "$@";;
     close) be_close "$@";;
+    holder) be_holder "$@";;
     attach) be_attach_hint;;
-    *) echo "usage: backend.sh name | status <name> <pane> <state-file> | read <name> <pane> [lines] | prompt <name> <pane> <text> | keys <name> <pane> esc | close <id> | attach" >&2; exit 2;;
+    *) echo "usage: backend.sh name | status <name> <pane> <state-file> | read <name> <pane> [lines] | prompt <name> <pane> <text> | keys <name> <pane> esc | close <id> | holder <name> | attach" >&2; exit 2;;
   esac
 fi
