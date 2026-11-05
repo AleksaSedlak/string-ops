@@ -28,7 +28,8 @@ for P in "$PLANS"/*/; do
     status="$(grep -m1 -E '^> \*\*Status:\*\*' "$P/README.md" | sed -E 's/^> \*\*Status:\*\* //; s/\.$//' | cut -c1-60)"
     stage="landed"; grep -q '^## Dispatch' "$P/README.md" && stage="dispatched"
     grep -q '^## Integration' "$P/README.md" && stage="integrated"
-    grep -q '^## Shipped' "$P/README.md" && stage="shipped"
+    shipped="$(grep -E '^## Shipped' "$P/README.md" | tail -1)"
+    case "$shipped" in '') ;; *'(waves '*) stage="partly shipped";; *) stage="shipped";; esac
   fi
   # buckets and reports
   if [ "$kind" = plan ]; then repos="$(find "$P" -mindepth 1 -maxdepth 1 -type d ! -name reports ! -name .dispatch ! -name '.*' -exec basename {} \; | sort | tr '\n' ' ')"
