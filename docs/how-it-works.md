@@ -112,6 +112,8 @@ A preflight per repo, all deterministic:
 
 A merge conflict starts a catch-up worker, the only worker ever allowed to run a merge, and integration runs again. Then push, and one pull request per repo, in wave order, bodies cross-linked. A no-plan task ships the same way from its `TASK.md` and report. The coordinator never merges.
 
+A plan whose next wave installs something the previous wave releases (a shared package) ships one wave at a time. Integrate lists the repos of a wave that was never dispatched as not started, checks the finished waves and says `Ready for ship-workstream: yes (waves 1)`; ship opens only those pull requests and records them under `## Shipped <date> (waves 1)`, which the status digest shows as partly shipped. After the release, the next wave is dispatched, integrated and shipped, skipping the repos already shipped, and every pull request of the workstream ends up cross-linked.
+
 ### 7. Wrap
 
 After the merges, for a workstream or a shipped no-plan task. Every commit in the reports must be reachable from the target branch. Then the metrics row is written, worktrees removed, worker windows closed, the folder deleted. The row is the only thing that survives.

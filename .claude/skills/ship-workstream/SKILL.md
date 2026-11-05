@@ -12,7 +12,7 @@ Two kinds of folder can ship. A **planned workstream** has `README.md` from `/la
 
 ## Preflight, all repos before any push
 
-1. Per kind. Planned: `plans/<workstream>/README.md` has an `## Integration <date>` block, and the latest one contains the exact text `Ready for ship-workstream: yes`. Anything else, including `no, because ...`, stops here: run `/integrate` first. No-plan: `reports/<repo>.md` exists, its `## Commits` section lists at least one commit, and its `## Open questions` section is empty or says none; otherwise stop and show what is missing. No integration block is needed.
+1. Per kind. Planned: `plans/<workstream>/README.md` has an `## Integration <date>` block, and the latest one contains the exact text `Ready for ship-workstream: yes`. Anything else, including `no, because ...`, stops here: run `/integrate` first. `yes (waves <list>)` ships only the repos of those waves; plain `yes` ships every bucket. Either way, a repo already listed in an earlier `## Shipped` block is not shipped again. No-plan: `reports/<repo>.md` exists, its `## Commits` section lists at least one commit, and its `## Open questions` section is empty or says none; otherwise stop and show what is missing. No integration block is needed.
 2. `NOTES.md`, when the folder has one, has no unresolved entry.
 3. For each repo (planned: every repo bucket; no-plan: the `Repo:` line), from `plans/<slug>/.dispatch/workers.tsv` (tab-separated: started-at, repo, agent name, runner, window id, pane id, checkout path, effort, harness, model) get the checkout path, and from `REPOS.md` the `PR target`. A repo with no row uses `.worktrees/<slug>/<repo>` if it exists, else the main checkout; say which. Then run the deterministic preflight:
 
@@ -28,7 +28,7 @@ Two kinds of folder can ship. A **planned workstream** has `README.md` from `/la
 
 ## Push and open PRs, in wave order
 
-For each repo, waves in order, contract owners first:
+For each repo to ship (see preflight step 1), waves in order, contract owners first:
 
 ```bash
 git -C <checkout> push -u origin <workstream>
@@ -80,7 +80,7 @@ For a no-plan task, the title is the text after `# Task - ` in `TASK.md`, and th
 <only when more than one slug was named in this call: the other PRs in the order given, or "next">
 ```
 
-Open the PRs in wave order (no-plan: the order given) so each later body can carry the earlier URLs. After the last PR, edit every earlier PR body (`gh pr edit <n> --body-file`) so all of them list all the URLs.
+Open the PRs in wave order (no-plan: the order given) so each later body can carry the earlier URLs. After the last PR, edit every earlier PR body (`gh pr edit <n> --body-file`) so all of them list all the URLs, including PRs from earlier `## Shipped` blocks of this workstream. Repos of later waves not shipped yet appear in the merge order as "next (wave <n>)".
 
 No labels, no reviewers, no auto-merge, no draft flag unless the user asked. Never merge. Never touch `main`, `master`, `staging` or `develop` in any way.
 
@@ -96,7 +96,9 @@ Append to `plans/<workstream>/README.md`, or for a no-plan task to `plans/<slug>
 Merge order: <list>
 ```
 
-Print the same block. Then stop. Merging is the user's, in the order given. `/wrap-workstream` runs after the merges.
+When later waves remain unshipped, the heading is `## Shipped <date> (waves <list>)` and the block ends with `Next: wave <n> (<repos>) after <the README's between-waves step>`; `status.sh` reads that suffix as partly shipped. The ship that covers the last remaining repos uses the plain heading.
+
+Print the same block. Then stop. Merging is the user's, in the order given. `/wrap-workstream` runs after the merges of every wave.
 
 ## Never
 

@@ -134,6 +134,9 @@ printf '# Report - alpha\n\n## Commits\n\nfix-timeout\n- abc1234 Bump timeout\n\
 printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "2026-09-24T10:00:00" alpha fix-timeout-alpha tmux none none "$WS/alpha" high claude default fix-timeout abc1234 >> "$T/.dispatch/workers.tsv"
 row="$(PATH=/nonexistent:$PATH "$S/wrap-workstream/metrics.sh" --plan "$T" 2>/dev/null)"; printf '%s' "$row" | grep -q '| fix-timeout | task |' && printf '%s' "$row" | grep -qE '\| 1 \| [^|]* \| [^|]* \| [^|]* \|$' && pass "metrics row for a shipped no-plan task counts its PR from TASK.md" || bad "metrics no-plan PRs: $row"
 "$S/status/status.sh" --all 2>/dev/null | sed -n '/^## fix-timeout/,/^## /p' | grep -q 'PRs: https://github.com/example/alpha/pull/7' && pass "status shows a no-plan task's PR from its TASK.md" || bad "status no-plan PRs"
+W="$WS/plans/wave-ship"; mkdir -p "$W/reports"
+printf '# Wave ship\n\n> **Status:** approved 2026-09-24.\n\n## Shipped 2026-09-24 (waves 1)\n\n- alpha: https://github.com/example/alpha/pull/8 (base staging)\n' > "$W/README.md"
+"$S/status/status.sh" 2>/dev/null | sed -n '/^## wave-ship/,/^## /p' | grep -q 'stage: partly shipped' && pass "status keeps a plan shipped one wave at a time in view as partly shipped" || bad "status partly shipped"
 
 # the Claude app: approval from an answer, workers off the app
 A="$WS/plans/phone-demo"; mkdir -p "$A"; printf '# Phone demo\n\n> **Status:** landed 2026-09-25, awaiting approval. (Dispatch refuses to start until this line reads `approved <date>`.)\n> **Scope:** alpha\n' > "$A/README.md"

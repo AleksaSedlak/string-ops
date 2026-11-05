@@ -17,7 +17,12 @@ Read `plans/<workstream>/NOTES.md`. If it has any entry below the standing instr
 
 For every repo bucket in the plan README, read `reports/<repo>.md`. A missing report means the worker did not finish; list it and stop after this section. A report whose "Tasks done" says a task was skipped is a finding, not an error; carry it into the summary.
 
-Run `.claude/skills/dispatch/learn.sh --plan <abs plan>` once all reports are present; it files each report's Learnings into `learnings/<repo>.md` and prints what was new. Then run `.claude/skills/dispatch/link-repos.sh --plan <abs plan>`; it records every other registry repo a report names, and the entry does not yet, as a `Linked:` line on both entries. Mention the new learnings and links in the summary.
+Two exceptions, for plans that ship a wave before the next one starts (a package the next wave installs):
+
+- A repo of a later wave that was never dispatched (no row in `workers.tsv`, and its wave comes after every wave that has reports) is not missing: list it as "not started, wave <n>" and integrate the finished waves only. Every repo of those waves must have a report.
+- A repo already listed in an earlier `## Shipped` block was integrated and shipped before; list it as "shipped <date>, <PR url>" and skip its checks (after its merge it has no commits ahead of the target).
+
+Run `.claude/skills/dispatch/learn.sh --plan <abs plan>` once every report of the waves being integrated is present; it files each report's Learnings into `learnings/<repo>.md` and prints what was new. Then run `.claude/skills/dispatch/link-repos.sh --plan <abs plan>`; it records every other registry repo a report names, and the entry does not yet, as a `Linked:` line on both entries. Mention the new learnings and links in the summary.
 
 Read `plans/<workstream>/.dispatch/workers.tsv` for the checkout path of each worker. Columns, tab-separated: started-at, repo, agent name, runner (`herdr` or `tmux`), window id, pane id, checkout path, effort, harness, model, branch and commit the worker started on. A repo with a report but no row was started by hand; use `.worktrees/<workstream>/<repo>` if it exists, else the main checkout, and say so.
 
@@ -93,7 +98,7 @@ Append this block to `plans/<workstream>/README.md` under a `## Integration <dat
 
 ```
 Workstream: <slug>
-Repos: <n> reported, <m> missing
+Repos: <n> reported, <m> missing<, k not started (later waves: repos), s shipped earlier: repos>
 
 Per repo:
 - <repo>: <commits> commit(s) on <branch>, tests <result>, contract <ok | deviations: ...>, attribution <clean | HITS>
@@ -113,7 +118,9 @@ Skipped tasks and open questions from the reports:
 
 Merge order: <repos in wave order, with anything that must be published or released in between>
 
-Blocking: <none | list>. Ready for ship-workstream: <yes | no, because ...>
+Blocking: <none | list>. Ready for ship-workstream: <yes | yes (waves <list>) | no, because ...>
 ```
+
+Write `yes (waves <list>)`, naming the integrated waves, when later waves are not started; `ship-workstream` then ships only those waves. Write plain `yes` when every wave is integrated or shipped.
 
 Then wait. Gate 3 is the user's answer to this summary. Never push, merge, or edit code here; if a deviation needs a code change, the fix is a re-dispatch of that repo with a corrected task, not an edit from this session.
