@@ -10,7 +10,8 @@
 # load them) and starts the worker with both folders readable. Dispatch runs it for every repo of a wave
 # as soon as that wave's reports are in, so the review of wave 1 runs while wave 2 codes; integrate runs
 # it for any repo that still has no review. Refuses without the worker's report. Re-running it while the
-# review is live or done says so and starts nothing.
+# review is live or done says so and starts nothing; a review older than the worker's report (a follow-up
+# commit after review) counts as not done, so the changed report is reviewed again.
 set -euo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$D/backend.sh"
@@ -29,7 +30,8 @@ TARGET="$(awk -v r="## $REPO" '$0==r{f=1;next} /^## /{f=0} f && /^- Branches:/{p
 
 RP="$WORKSPACE/plans/$WS_SLUG-review-$REPO"
 if [ -f "$RP/reports/$REPO.md" ] && [ -f "$RP/.dispatch/workers.tsv" ] \
-   && [ "$(file_mtime "$RP/reports/$REPO.md")" -ge "$(stamp_epoch "$(tail -1 "$RP/.dispatch/workers.tsv" | cut -f1)")" ]; then
+   && [ "$(file_mtime "$RP/reports/$REPO.md")" -ge "$(stamp_epoch "$(tail -1 "$RP/.dispatch/workers.tsv" | cut -f1)")" ] \
+   && [ "$(file_mtime "$RP/reports/$REPO.md")" -ge "$(file_mtime "$PLAN/reports/$REPO.md")" ]; then
   echo "review of $REPO already done: $RP/reports/$REPO.md"; exit 0
 fi
 if [ -f "$RP/.dispatch/workers.tsv" ]; then
